@@ -3,37 +3,42 @@
 #ifndef RISCV_CSR_ENCODING_H
 #define RISCV_CSR_ENCODING_H
 
-#define MSTATUS_IE          0x00000001
-#define MSTATUS_PRV         0x00000006
-#define MSTATUS_IE1         0x00000008
-#define MSTATUS_PRV1        0x00000030
-#define MSTATUS_IE2         0x00000040
-#define MSTATUS_PRV2        0x00000180
-#define MSTATUS_IE3         0x00000200
-#define MSTATUS_PRV3        0x00000C00
-#define MSTATUS_FS          0x00003000
-#define MSTATUS_XS          0x0000C000
-#define MSTATUS_MPRV        0x00010000
-#define MSTATUS_VM          0x003E0000
+#define MSTATUS_UIE         0x00000001
+#define MSTATUS_SIE         0x00000002
+#define MSTATUS_HIE         0x00000004
+#define MSTATUS_MIE         0x00000008
+#define MSTATUS_UPIE        0x00000010
+#define MSTATUS_SPIE        0x00000020
+#define MSTATUS_HPIE        0x00000040
+#define MSTATUS_MPIE        0x00000080
+#define MSTATUS_SPP         0x00000100
+#define MSTATUS_HPP         0x00000600
+#define MSTATUS_MPP         0x00001800
+#define MSTATUS_FS          0x00006000
+#define MSTATUS_XS          0x00018000
+#define MSTATUS_MPRV        0x00020000
+#define MSTATUS_PUM         0x00040000
+#define MSTATUS_VM          0x1F000000
 #define MSTATUS32_SD        0x80000000
 #define MSTATUS64_SD        0x8000000000000000
 
-#define SSTATUS_IE          0x00000001
-#define SSTATUS_PIE         0x00000008
-#define SSTATUS_PS          0x00000010
-#define SSTATUS_FS          0x00003000
-#define SSTATUS_XS          0x0000C000
-#define SSTATUS_MPRV        0x00010000
-#define SSTATUS_TIE         0x01000000
+#define SSTATUS_UIE         0x00000001
+#define SSTATUS_SIE         0x00000002
+#define SSTATUS_UPIE        0x00000010
+#define SSTATUS_SPIE        0x00000020
+#define SSTATUS_SPP         0x00000100
+#define SSTATUS_FS          0x00006000
+#define SSTATUS_XS          0x00018000
+#define SSTATUS_PUM         0x00040000
 #define SSTATUS32_SD        0x80000000
 #define SSTATUS64_SD        0x8000000000000000
 
-#define MIP_SSIP            0x00000002
-#define MIP_HSIP            0x00000004
-#define MIP_MSIP            0x00000008
-#define MIP_STIP            0x00000020
-#define MIP_HTIP            0x00000040
-#define MIP_MTIP            0x00000080
+#define MIP_SSIP            (1 << IRQ_S_SOFT)
+#define MIP_HSIP            (1 << IRQ_H_SOFT)
+#define MIP_MSIP            (1 << IRQ_M_SOFT)
+#define MIP_STIP            (1 << IRQ_S_TIMER)
+#define MIP_HTIP            (1 << IRQ_H_TIMER)
+#define MIP_MTIP            (1 << IRQ_M_TIMER)
 
 #define SIP_SSIP MIP_SSIP
 #define SIP_STIP MIP_STIP
@@ -50,18 +55,21 @@
 #define VM_SV39  9
 #define VM_SV48  10
 
-#define UA_RV32  0
-#define UA_RV64  4
-#define UA_RV128 8
+#define IRQ_S_SOFT   1
+#define IRQ_H_SOFT   2
+#define IRQ_M_SOFT   3
+#define IRQ_S_TIMER  5
+#define IRQ_H_TIMER  6
+#define IRQ_M_TIMER  7
+#define IRQ_S_DEV    9
+#define IRQ_H_DEV    10
+#define IRQ_M_DEV    11
+#define IRQ_COP      12
+#define IRQ_HOST     13
 
-#define IRQ_SOFT   0
-#define IRQ_TIMER  1
-#define IRQ_HOST   2
-#define IRQ_COP    3
-
-#define IMPL_ROCKET 1
-
-#define DEFAULT_MTVEC 0x100
+#define DEFAULT_RSTVEC 0x0
+#define DEFAULT_NMIVEC 0x4
+#define DEFAULT_MTVEC  0x8
 
 // page table entry (PTE) fields
 #define PTE_V     0x001 // Valid
@@ -124,22 +132,28 @@
   asm volatile ("csrr %0, " #reg : "=r"(__tmp)); \
   __tmp; })
 
-#define write_csr(reg, val) \
-  asm volatile ("csrw " #reg ", %0" :: "r"(val))
+#define write_csr(reg, val) ({ \
+  if (__builtin_constant_p(val) && (unsigned long)(val) < 32) \
+    asm volatile ("csrw " #reg ", %0" :: "i"(val)); \
+  else \
+    asm volatile ("csrw " #reg ", %0" :: "r"(val)); })
 
-#define swap_csr(reg, val) ({ long __tmp; \
-  asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "r"(val)); \
+#define swap_csr(reg, val) ({ unsigned long __tmp; \
+  if (__builtin_constant_p(val) && (unsigned long)(val) < 32) \
+    asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "i"(val)); \
+  else \
+    asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "r"(val)); \
   __tmp; })
 
 #define set_csr(reg, bit) ({ unsigned long __tmp; \
-  if (__builtin_constant_p(bit) && (bit) < 32) \
+  if (__builtin_constant_p(bit) && (unsigned long)(bit) < 32) \
     asm volatile ("csrrs %0, " #reg ", %1" : "=r"(__tmp) : "i"(bit)); \
   else \
     asm volatile ("csrrs %0, " #reg ", %1" : "=r"(__tmp) : "r"(bit)); \
   __tmp; })
 
 #define clear_csr(reg, bit) ({ unsigned long __tmp; \
-  if (__builtin_constant_p(bit) && (bit) < 32) \
+  if (__builtin_constant_p(bit) && (unsigned long)(bit) < 32) \
     asm volatile ("csrrc %0, " #reg ", %1" : "=r"(__tmp) : "i"(bit)); \
   else \
     asm volatile ("csrrc %0, " #reg ", %1" : "=r"(__tmp) : "r"(bit)); \
@@ -335,18 +349,12 @@
 #define MASK_SCALL  0xffffffff
 #define MATCH_SBREAK 0x100073
 #define MASK_SBREAK  0xffffffff
-#define MATCH_SRET 0x10000073
+#define MATCH_SRET 0x10200073
 #define MASK_SRET  0xffffffff
-#define MATCH_SFENCE_VM 0x10100073
+#define MATCH_SFENCE_VM 0x10400073
 #define MASK_SFENCE_VM  0xfff07fff
-#define MATCH_WFI 0x10200073
+#define MATCH_WFI 0x10500073
 #define MASK_WFI  0xffffffff
-#define MATCH_MRTH 0x30600073
-#define MASK_MRTH  0xffffffff
-#define MATCH_MRTS 0x30500073
-#define MASK_MRTS  0xffffffff
-#define MATCH_HRTS 0x20500073
-#define MASK_HRTS  0xffffffff
 #define MATCH_CSRRW 0x1073
 #define MASK_CSRRW  0x707f
 #define MATCH_CSRRS 0x2073
@@ -483,140 +491,202 @@
 #define MASK_FNMSUB_D  0x600007f
 #define MATCH_FNMADD_D 0x200004f
 #define MASK_FNMADD_D  0x600007f
-#define MATCH_C_JR 0x0
-#define MASK_C_JR  0xf07f
-#define MATCH_C_JALR 0x1000
-#define MASK_C_JALR  0xf07f
-#define MATCH_C_EBREAK 0x1000
-#define MASK_C_EBREAK  0xffff
-#define MATCH_C_ADDI16SP 0xa002
-#define MASK_C_ADDI16SP  0xef83
-#define MATCH_C_NOP 0xc002
+#define MATCH_C_NOP 0x1
 #define MASK_C_NOP  0xffff
-#define MATCH_C_SD 0x6000
-#define MASK_C_SD  0xe003
-#define MATCH_C_LD 0xe000
+#define MATCH_C_ADDI16SP 0x6101
+#define MASK_C_ADDI16SP  0xef83
+#define MATCH_C_JR 0x8002
+#define MASK_C_JR  0xf07f
+#define MATCH_C_JALR 0x9002
+#define MASK_C_JALR  0xf07f
+#define MATCH_C_EBREAK 0x9002
+#define MASK_C_EBREAK  0xffff
+#define MATCH_C_LD 0x6000
 #define MASK_C_LD  0xe003
-#define MATCH_C_SDSP 0x6001
-#define MASK_C_SDSP  0xe003
-#define MATCH_C_LDSP 0xe001
-#define MASK_C_LDSP  0xe003
-#define MATCH_C_MV 0x0
-#define MASK_C_MV  0xf003
-#define MATCH_C_ADD 0x1000
-#define MASK_C_ADD  0xf003
-#define MATCH_C_FSD 0x2000
-#define MASK_C_FSD  0xe003
-#define MATCH_C_SW 0x4000
-#define MASK_C_SW  0xe003
-#define MATCH_C_FSW 0x6000
-#define MASK_C_FSW  0xe003
-#define MATCH_C_ADDI4SPN 0x8000
-#define MASK_C_ADDI4SPN  0xe003
-#define MATCH_C_FLD 0xa000
-#define MASK_C_FLD  0xe003
-#define MATCH_C_LW 0xc000
-#define MASK_C_LW  0xe003
-#define MATCH_C_FLW 0xe000
-#define MASK_C_FLW  0xe003
-#define MATCH_C_SLLI 0x1
-#define MASK_C_SLLI  0xe003
-#define MATCH_C_FSDSP 0x2001
-#define MASK_C_FSDSP  0xe003
-#define MATCH_C_SWSP 0x4001
-#define MASK_C_SWSP  0xe003
-#define MATCH_C_FSWSP 0x6001
-#define MASK_C_FSWSP  0xe003
-#define MATCH_C_ADDW 0x8001
-#define MASK_C_ADDW  0xf003
-#define MATCH_C_FLDSP 0xa001
-#define MASK_C_FLDSP  0xe003
-#define MATCH_C_LWSP 0xc001
-#define MASK_C_LWSP  0xe003
-#define MATCH_C_FLWSP 0xe001
-#define MASK_C_FLWSP  0xe003
-#define MATCH_C_J 0x2
-#define MASK_C_J  0xe003
-#define MATCH_C_JAL 0x2002
-#define MASK_C_JAL  0xe003
-#define MATCH_C_BEQZ 0x4002
-#define MASK_C_BEQZ  0xe003
-#define MATCH_C_BNEZ 0x6002
-#define MASK_C_BNEZ  0xe003
-#define MATCH_C_LI 0x8002
-#define MASK_C_LI  0xe003
-#define MATCH_C_LUI 0xa002
-#define MASK_C_LUI  0xe003
-#define MATCH_C_ADDI 0xc002
-#define MASK_C_ADDI  0xe003
-#define MATCH_C_ADDIW 0xe002
+#define MATCH_C_SD 0xe000
+#define MASK_C_SD  0xe003
+#define MATCH_C_ADDIW 0x2001
 #define MASK_C_ADDIW  0xe003
+#define MATCH_C_LDSP 0x6002
+#define MASK_C_LDSP  0xe003
+#define MATCH_C_SDSP 0xe002
+#define MASK_C_SDSP  0xe003
+#define MATCH_C_ADDI4SPN 0x0
+#define MASK_C_ADDI4SPN  0xe003
+#define MATCH_C_FLD 0x2000
+#define MASK_C_FLD  0xe003
+#define MATCH_C_LW 0x4000
+#define MASK_C_LW  0xe003
+#define MATCH_C_FLW 0x6000
+#define MASK_C_FLW  0xe003
+#define MATCH_C_FSD 0xa000
+#define MASK_C_FSD  0xe003
+#define MATCH_C_SW 0xc000
+#define MASK_C_SW  0xe003
+#define MATCH_C_FSW 0xe000
+#define MASK_C_FSW  0xe003
+#define MATCH_C_ADDI 0x1
+#define MASK_C_ADDI  0xe003
+#define MATCH_C_JAL 0x2001
+#define MASK_C_JAL  0xe003
+#define MATCH_C_LI 0x4001
+#define MASK_C_LI  0xe003
+#define MATCH_C_LUI 0x6001
+#define MASK_C_LUI  0xe003
+#define MATCH_C_SRLI 0x8001
+#define MASK_C_SRLI  0xec03
+#define MATCH_C_SRAI 0x8401
+#define MASK_C_SRAI  0xec03
+#define MATCH_C_ANDI 0x8801
+#define MASK_C_ANDI  0xec03
+#define MATCH_C_SUB 0x8c01
+#define MASK_C_SUB  0xfc63
+#define MATCH_C_XOR 0x8c21
+#define MASK_C_XOR  0xfc63
+#define MATCH_C_OR 0x8c41
+#define MASK_C_OR  0xfc63
+#define MATCH_C_AND 0x8c61
+#define MASK_C_AND  0xfc63
+#define MATCH_C_SUBW 0x9c01
+#define MASK_C_SUBW  0xfc63
+#define MATCH_C_ADDW 0x9c21
+#define MASK_C_ADDW  0xfc63
+#define MATCH_C_J 0xa001
+#define MASK_C_J  0xe003
+#define MATCH_C_BEQZ 0xc001
+#define MASK_C_BEQZ  0xe003
+#define MATCH_C_BNEZ 0xe001
+#define MASK_C_BNEZ  0xe003
+#define MATCH_C_SLLI 0x2
+#define MASK_C_SLLI  0xe003
+#define MATCH_C_FLDSP 0x2002
+#define MASK_C_FLDSP  0xe003
+#define MATCH_C_LWSP 0x4002
+#define MASK_C_LWSP  0xe003
+#define MATCH_C_FLWSP 0x6002
+#define MASK_C_FLWSP  0xe003
+#define MATCH_C_MV 0x8002
+#define MASK_C_MV  0xf003
+#define MATCH_C_ADD 0x9002
+#define MASK_C_ADD  0xf003
+#define MATCH_C_FSDSP 0xa002
+#define MASK_C_FSDSP  0xe003
+#define MATCH_C_SWSP 0xc002
+#define MASK_C_SWSP  0xe003
+#define MATCH_C_FSWSP 0xe002
+#define MASK_C_FSWSP  0xe003
+#define MATCH_CUSTOM0 0xb
+#define MASK_CUSTOM0  0x707f
+#define MATCH_CUSTOM0_RS1 0x200b
+#define MASK_CUSTOM0_RS1  0x707f
+#define MATCH_CUSTOM0_RS1_RS2 0x300b
+#define MASK_CUSTOM0_RS1_RS2  0x707f
+#define MATCH_CUSTOM0_RD 0x400b
+#define MASK_CUSTOM0_RD  0x707f
+#define MATCH_CUSTOM0_RD_RS1 0x600b
+#define MASK_CUSTOM0_RD_RS1  0x707f
+#define MATCH_CUSTOM0_RD_RS1_RS2 0x700b
+#define MASK_CUSTOM0_RD_RS1_RS2  0x707f
+#define MATCH_CUSTOM1 0x2b
+#define MASK_CUSTOM1  0x707f
+#define MATCH_CUSTOM1_RS1 0x202b
+#define MASK_CUSTOM1_RS1  0x707f
+#define MATCH_CUSTOM1_RS1_RS2 0x302b
+#define MASK_CUSTOM1_RS1_RS2  0x707f
+#define MATCH_CUSTOM1_RD 0x402b
+#define MASK_CUSTOM1_RD  0x707f
+#define MATCH_CUSTOM1_RD_RS1 0x602b
+#define MASK_CUSTOM1_RD_RS1  0x707f
+#define MATCH_CUSTOM1_RD_RS1_RS2 0x702b
+#define MASK_CUSTOM1_RD_RS1_RS2  0x707f
+#define MATCH_CUSTOM2 0x5b
+#define MASK_CUSTOM2  0x707f
+#define MATCH_CUSTOM2_RS1 0x205b
+#define MASK_CUSTOM2_RS1  0x707f
+#define MATCH_CUSTOM2_RS1_RS2 0x305b
+#define MASK_CUSTOM2_RS1_RS2  0x707f
+#define MATCH_CUSTOM2_RD 0x405b
+#define MASK_CUSTOM2_RD  0x707f
+#define MATCH_CUSTOM2_RD_RS1 0x605b
+#define MASK_CUSTOM2_RD_RS1  0x707f
+#define MATCH_CUSTOM2_RD_RS1_RS2 0x705b
+#define MASK_CUSTOM2_RD_RS1_RS2  0x707f
+#define MATCH_CUSTOM3 0x7b
+#define MASK_CUSTOM3  0x707f
+#define MATCH_CUSTOM3_RS1 0x207b
+#define MASK_CUSTOM3_RS1  0x707f
+#define MATCH_CUSTOM3_RS1_RS2 0x307b
+#define MASK_CUSTOM3_RS1_RS2  0x707f
+#define MATCH_CUSTOM3_RD 0x407b
+#define MASK_CUSTOM3_RD  0x707f
+#define MATCH_CUSTOM3_RD_RS1 0x607b
+#define MASK_CUSTOM3_RD_RS1  0x707f
+#define MATCH_CUSTOM3_RD_RS1_RS2 0x707b
+#define MASK_CUSTOM3_RD_RS1_RS2  0x707f
 #define CSR_FFLAGS 0x1
 #define CSR_FRM 0x2
 #define CSR_FCSR 0x3
 #define CSR_CYCLE 0xc00
 #define CSR_TIME 0xc01
 #define CSR_INSTRET 0xc02
-#define CSR_STATS 0xc0
-#define CSR_UARCH0 0xcc0
-#define CSR_UARCH1 0xcc1
-#define CSR_UARCH2 0xcc2
-#define CSR_UARCH3 0xcc3
-#define CSR_UARCH4 0xcc4
-#define CSR_UARCH5 0xcc5
-#define CSR_UARCH6 0xcc6
-#define CSR_UARCH7 0xcc7
-#define CSR_UARCH8 0xcc8
-#define CSR_UARCH9 0xcc9
-#define CSR_UARCH10 0xcca
-#define CSR_UARCH11 0xccb
-#define CSR_UARCH12 0xccc
-#define CSR_UARCH13 0xccd
-#define CSR_UARCH14 0xcce
-#define CSR_UARCH15 0xccf
 #define CSR_SSTATUS 0x100
-#define CSR_STVEC 0x101
 #define CSR_SIE 0x104
+#define CSR_STVEC 0x105
 #define CSR_SSCRATCH 0x140
 #define CSR_SEPC 0x141
+#define CSR_SCAUSE 0x142
+#define CSR_SBADADDR 0x143
 #define CSR_SIP 0x144
 #define CSR_SPTBR 0x180
 #define CSR_SASID 0x181
-#define CSR_CYCLEW 0x900
-#define CSR_TIMEW 0x901
-#define CSR_INSTRETW 0x902
+#define CSR_SCYCLE 0xd00
 #define CSR_STIME 0xd01
-#define CSR_SCAUSE 0xd42
-#define CSR_SBADADDR 0xd43
-#define CSR_STIMEW 0xa01
+#define CSR_SINSTRET 0xd02
 #define CSR_MSTATUS 0x300
-#define CSR_MTVEC 0x301
-#define CSR_MTDELEG 0x302
+#define CSR_MEDELEG 0x302
+#define CSR_MIDELEG 0x303
 #define CSR_MIE 0x304
+#define CSR_MTVEC 0x305
 #define CSR_MTIMECMP 0x321
 #define CSR_MSCRATCH 0x340
 #define CSR_MEPC 0x341
 #define CSR_MCAUSE 0x342
 #define CSR_MBADADDR 0x343
 #define CSR_MIP 0x344
-#define CSR_MTIME 0x701
-#define CSR_MCPUID 0xf00
-#define CSR_MIMPID 0xf01
-#define CSR_MHARTID 0xf10
-#define CSR_MTOHOST 0x780
-#define CSR_MFROMHOST 0x781
-#define CSR_MRESET 0x782
-#define CSR_SEND_IPI 0x783
+#define CSR_MIPI 0x345
+#define CSR_MUCOUNTEREN 0x310
+#define CSR_MSCOUNTEREN 0x311
+#define CSR_MUCYCLE_DELTA 0x700
+#define CSR_MUTIME_DELTA 0x701
+#define CSR_MUINSTRET_DELTA 0x702
+#define CSR_MSCYCLE_DELTA 0x704
+#define CSR_MSTIME_DELTA 0x705
+#define CSR_MSINSTRET_DELTA 0x706
+#define CSR_MCYCLE 0xf00
+#define CSR_MTIME 0xf01
+#define CSR_MINSTRET 0xf02
+#define CSR_MISA 0xf10
+#define CSR_MVENDORID 0xf11
+#define CSR_MARCHID 0xf12
+#define CSR_MIMPID 0xf13
+#define CSR_MCFGADDR 0xf14
+#define CSR_MHARTID 0xf15
+#define CSR_MTOHOST 0x7c0
+#define CSR_MFROMHOST 0x7c1
+#define CSR_MRESET 0x7c2
 #define CSR_CYCLEH 0xc80
 #define CSR_TIMEH 0xc81
 #define CSR_INSTRETH 0xc82
-#define CSR_CYCLEHW 0x980
-#define CSR_TIMEHW 0x981
-#define CSR_INSTRETHW 0x982
-#define CSR_STIMEH 0xd81
-#define CSR_STIMEHW 0xa81
 #define CSR_MTIMECMPH 0x361
-#define CSR_MTIMEH 0x741
+#define CSR_MUCYCLE_DELTAH 0x780
+#define CSR_MUTIME_DELTAH 0x781
+#define CSR_MUINSTRET_DELTAH 0x782
+#define CSR_MSCYCLE_DELTAH 0x784
+#define CSR_MSTIME_DELTAH 0x785
+#define CSR_MSINSTRET_DELTAH 0x786
+#define CSR_MCYCLEH 0xf80
+#define CSR_MTIMEH 0xf81
+#define CSR_MINSTRETH 0xf82
 #define CAUSE_MISALIGNED_FETCH 0x0
 #define CAUSE_FAULT_FETCH 0x1
 #define CAUSE_ILLEGAL_INSTRUCTION 0x2
@@ -722,9 +792,6 @@ DECLARE_INSN(sbreak, MATCH_SBREAK, MASK_SBREAK)
 DECLARE_INSN(sret, MATCH_SRET, MASK_SRET)
 DECLARE_INSN(sfence_vm, MATCH_SFENCE_VM, MASK_SFENCE_VM)
 DECLARE_INSN(wfi, MATCH_WFI, MASK_WFI)
-DECLARE_INSN(mrth, MATCH_MRTH, MASK_MRTH)
-DECLARE_INSN(mrts, MATCH_MRTS, MASK_MRTS)
-DECLARE_INSN(hrts, MATCH_HRTS, MASK_HRTS)
 DECLARE_INSN(csrrw, MATCH_CSRRW, MASK_CSRRW)
 DECLARE_INSN(csrrs, MATCH_CSRRS, MASK_CSRRS)
 DECLARE_INSN(csrrc, MATCH_CSRRC, MASK_CSRRC)
@@ -793,40 +860,72 @@ DECLARE_INSN(fmadd_d, MATCH_FMADD_D, MASK_FMADD_D)
 DECLARE_INSN(fmsub_d, MATCH_FMSUB_D, MASK_FMSUB_D)
 DECLARE_INSN(fnmsub_d, MATCH_FNMSUB_D, MASK_FNMSUB_D)
 DECLARE_INSN(fnmadd_d, MATCH_FNMADD_D, MASK_FNMADD_D)
+DECLARE_INSN(c_nop, MATCH_C_NOP, MASK_C_NOP)
+DECLARE_INSN(c_addi16sp, MATCH_C_ADDI16SP, MASK_C_ADDI16SP)
 DECLARE_INSN(c_jr, MATCH_C_JR, MASK_C_JR)
 DECLARE_INSN(c_jalr, MATCH_C_JALR, MASK_C_JALR)
 DECLARE_INSN(c_ebreak, MATCH_C_EBREAK, MASK_C_EBREAK)
-DECLARE_INSN(c_addi16sp, MATCH_C_ADDI16SP, MASK_C_ADDI16SP)
-DECLARE_INSN(c_nop, MATCH_C_NOP, MASK_C_NOP)
-DECLARE_INSN(c_sd, MATCH_C_SD, MASK_C_SD)
 DECLARE_INSN(c_ld, MATCH_C_LD, MASK_C_LD)
-DECLARE_INSN(c_sdsp, MATCH_C_SDSP, MASK_C_SDSP)
+DECLARE_INSN(c_sd, MATCH_C_SD, MASK_C_SD)
+DECLARE_INSN(c_addiw, MATCH_C_ADDIW, MASK_C_ADDIW)
 DECLARE_INSN(c_ldsp, MATCH_C_LDSP, MASK_C_LDSP)
-DECLARE_INSN(c_mv, MATCH_C_MV, MASK_C_MV)
-DECLARE_INSN(c_add, MATCH_C_ADD, MASK_C_ADD)
-DECLARE_INSN(c_fsd, MATCH_C_FSD, MASK_C_FSD)
-DECLARE_INSN(c_sw, MATCH_C_SW, MASK_C_SW)
-DECLARE_INSN(c_fsw, MATCH_C_FSW, MASK_C_FSW)
+DECLARE_INSN(c_sdsp, MATCH_C_SDSP, MASK_C_SDSP)
 DECLARE_INSN(c_addi4spn, MATCH_C_ADDI4SPN, MASK_C_ADDI4SPN)
 DECLARE_INSN(c_fld, MATCH_C_FLD, MASK_C_FLD)
 DECLARE_INSN(c_lw, MATCH_C_LW, MASK_C_LW)
 DECLARE_INSN(c_flw, MATCH_C_FLW, MASK_C_FLW)
-DECLARE_INSN(c_slli, MATCH_C_SLLI, MASK_C_SLLI)
-DECLARE_INSN(c_fsdsp, MATCH_C_FSDSP, MASK_C_FSDSP)
-DECLARE_INSN(c_swsp, MATCH_C_SWSP, MASK_C_SWSP)
-DECLARE_INSN(c_fswsp, MATCH_C_FSWSP, MASK_C_FSWSP)
+DECLARE_INSN(c_fsd, MATCH_C_FSD, MASK_C_FSD)
+DECLARE_INSN(c_sw, MATCH_C_SW, MASK_C_SW)
+DECLARE_INSN(c_fsw, MATCH_C_FSW, MASK_C_FSW)
+DECLARE_INSN(c_addi, MATCH_C_ADDI, MASK_C_ADDI)
+DECLARE_INSN(c_jal, MATCH_C_JAL, MASK_C_JAL)
+DECLARE_INSN(c_li, MATCH_C_LI, MASK_C_LI)
+DECLARE_INSN(c_lui, MATCH_C_LUI, MASK_C_LUI)
+DECLARE_INSN(c_srli, MATCH_C_SRLI, MASK_C_SRLI)
+DECLARE_INSN(c_srai, MATCH_C_SRAI, MASK_C_SRAI)
+DECLARE_INSN(c_andi, MATCH_C_ANDI, MASK_C_ANDI)
+DECLARE_INSN(c_sub, MATCH_C_SUB, MASK_C_SUB)
+DECLARE_INSN(c_xor, MATCH_C_XOR, MASK_C_XOR)
+DECLARE_INSN(c_or, MATCH_C_OR, MASK_C_OR)
+DECLARE_INSN(c_and, MATCH_C_AND, MASK_C_AND)
+DECLARE_INSN(c_subw, MATCH_C_SUBW, MASK_C_SUBW)
 DECLARE_INSN(c_addw, MATCH_C_ADDW, MASK_C_ADDW)
+DECLARE_INSN(c_j, MATCH_C_J, MASK_C_J)
+DECLARE_INSN(c_beqz, MATCH_C_BEQZ, MASK_C_BEQZ)
+DECLARE_INSN(c_bnez, MATCH_C_BNEZ, MASK_C_BNEZ)
+DECLARE_INSN(c_slli, MATCH_C_SLLI, MASK_C_SLLI)
 DECLARE_INSN(c_fldsp, MATCH_C_FLDSP, MASK_C_FLDSP)
 DECLARE_INSN(c_lwsp, MATCH_C_LWSP, MASK_C_LWSP)
 DECLARE_INSN(c_flwsp, MATCH_C_FLWSP, MASK_C_FLWSP)
-DECLARE_INSN(c_j, MATCH_C_J, MASK_C_J)
-DECLARE_INSN(c_jal, MATCH_C_JAL, MASK_C_JAL)
-DECLARE_INSN(c_beqz, MATCH_C_BEQZ, MASK_C_BEQZ)
-DECLARE_INSN(c_bnez, MATCH_C_BNEZ, MASK_C_BNEZ)
-DECLARE_INSN(c_li, MATCH_C_LI, MASK_C_LI)
-DECLARE_INSN(c_lui, MATCH_C_LUI, MASK_C_LUI)
-DECLARE_INSN(c_addi, MATCH_C_ADDI, MASK_C_ADDI)
-DECLARE_INSN(c_addiw, MATCH_C_ADDIW, MASK_C_ADDIW)
+DECLARE_INSN(c_mv, MATCH_C_MV, MASK_C_MV)
+DECLARE_INSN(c_add, MATCH_C_ADD, MASK_C_ADD)
+DECLARE_INSN(c_fsdsp, MATCH_C_FSDSP, MASK_C_FSDSP)
+DECLARE_INSN(c_swsp, MATCH_C_SWSP, MASK_C_SWSP)
+DECLARE_INSN(c_fswsp, MATCH_C_FSWSP, MASK_C_FSWSP)
+DECLARE_INSN(custom0, MATCH_CUSTOM0, MASK_CUSTOM0)
+DECLARE_INSN(custom0_rs1, MATCH_CUSTOM0_RS1, MASK_CUSTOM0_RS1)
+DECLARE_INSN(custom0_rs1_rs2, MATCH_CUSTOM0_RS1_RS2, MASK_CUSTOM0_RS1_RS2)
+DECLARE_INSN(custom0_rd, MATCH_CUSTOM0_RD, MASK_CUSTOM0_RD)
+DECLARE_INSN(custom0_rd_rs1, MATCH_CUSTOM0_RD_RS1, MASK_CUSTOM0_RD_RS1)
+DECLARE_INSN(custom0_rd_rs1_rs2, MATCH_CUSTOM0_RD_RS1_RS2, MASK_CUSTOM0_RD_RS1_RS2)
+DECLARE_INSN(custom1, MATCH_CUSTOM1, MASK_CUSTOM1)
+DECLARE_INSN(custom1_rs1, MATCH_CUSTOM1_RS1, MASK_CUSTOM1_RS1)
+DECLARE_INSN(custom1_rs1_rs2, MATCH_CUSTOM1_RS1_RS2, MASK_CUSTOM1_RS1_RS2)
+DECLARE_INSN(custom1_rd, MATCH_CUSTOM1_RD, MASK_CUSTOM1_RD)
+DECLARE_INSN(custom1_rd_rs1, MATCH_CUSTOM1_RD_RS1, MASK_CUSTOM1_RD_RS1)
+DECLARE_INSN(custom1_rd_rs1_rs2, MATCH_CUSTOM1_RD_RS1_RS2, MASK_CUSTOM1_RD_RS1_RS2)
+DECLARE_INSN(custom2, MATCH_CUSTOM2, MASK_CUSTOM2)
+DECLARE_INSN(custom2_rs1, MATCH_CUSTOM2_RS1, MASK_CUSTOM2_RS1)
+DECLARE_INSN(custom2_rs1_rs2, MATCH_CUSTOM2_RS1_RS2, MASK_CUSTOM2_RS1_RS2)
+DECLARE_INSN(custom2_rd, MATCH_CUSTOM2_RD, MASK_CUSTOM2_RD)
+DECLARE_INSN(custom2_rd_rs1, MATCH_CUSTOM2_RD_RS1, MASK_CUSTOM2_RD_RS1)
+DECLARE_INSN(custom2_rd_rs1_rs2, MATCH_CUSTOM2_RD_RS1_RS2, MASK_CUSTOM2_RD_RS1_RS2)
+DECLARE_INSN(custom3, MATCH_CUSTOM3, MASK_CUSTOM3)
+DECLARE_INSN(custom3_rs1, MATCH_CUSTOM3_RS1, MASK_CUSTOM3_RS1)
+DECLARE_INSN(custom3_rs1_rs2, MATCH_CUSTOM3_RS1_RS2, MASK_CUSTOM3_RS1_RS2)
+DECLARE_INSN(custom3_rd, MATCH_CUSTOM3_RD, MASK_CUSTOM3_RD)
+DECLARE_INSN(custom3_rd_rs1, MATCH_CUSTOM3_RD_RS1, MASK_CUSTOM3_RD_RS1)
+DECLARE_INSN(custom3_rd_rs1_rs2, MATCH_CUSTOM3_RD_RS1_RS2, MASK_CUSTOM3_RD_RS1_RS2)
 #endif
 #ifdef DECLARE_CSR
 DECLARE_CSR(fflags, CSR_FFLAGS)
@@ -835,66 +934,64 @@ DECLARE_CSR(fcsr, CSR_FCSR)
 DECLARE_CSR(cycle, CSR_CYCLE)
 DECLARE_CSR(time, CSR_TIME)
 DECLARE_CSR(instret, CSR_INSTRET)
-DECLARE_CSR(stats, CSR_STATS)
-DECLARE_CSR(uarch0, CSR_UARCH0)
-DECLARE_CSR(uarch1, CSR_UARCH1)
-DECLARE_CSR(uarch2, CSR_UARCH2)
-DECLARE_CSR(uarch3, CSR_UARCH3)
-DECLARE_CSR(uarch4, CSR_UARCH4)
-DECLARE_CSR(uarch5, CSR_UARCH5)
-DECLARE_CSR(uarch6, CSR_UARCH6)
-DECLARE_CSR(uarch7, CSR_UARCH7)
-DECLARE_CSR(uarch8, CSR_UARCH8)
-DECLARE_CSR(uarch9, CSR_UARCH9)
-DECLARE_CSR(uarch10, CSR_UARCH10)
-DECLARE_CSR(uarch11, CSR_UARCH11)
-DECLARE_CSR(uarch12, CSR_UARCH12)
-DECLARE_CSR(uarch13, CSR_UARCH13)
-DECLARE_CSR(uarch14, CSR_UARCH14)
-DECLARE_CSR(uarch15, CSR_UARCH15)
 DECLARE_CSR(sstatus, CSR_SSTATUS)
-DECLARE_CSR(stvec, CSR_STVEC)
 DECLARE_CSR(sie, CSR_SIE)
+DECLARE_CSR(stvec, CSR_STVEC)
 DECLARE_CSR(sscratch, CSR_SSCRATCH)
 DECLARE_CSR(sepc, CSR_SEPC)
+DECLARE_CSR(scause, CSR_SCAUSE)
+DECLARE_CSR(sbadaddr, CSR_SBADADDR)
 DECLARE_CSR(sip, CSR_SIP)
 DECLARE_CSR(sptbr, CSR_SPTBR)
 DECLARE_CSR(sasid, CSR_SASID)
-DECLARE_CSR(cyclew, CSR_CYCLEW)
-DECLARE_CSR(timew, CSR_TIMEW)
-DECLARE_CSR(instretw, CSR_INSTRETW)
+DECLARE_CSR(scycle, CSR_SCYCLE)
 DECLARE_CSR(stime, CSR_STIME)
-DECLARE_CSR(scause, CSR_SCAUSE)
-DECLARE_CSR(sbadaddr, CSR_SBADADDR)
-DECLARE_CSR(stimew, CSR_STIMEW)
+DECLARE_CSR(sinstret, CSR_SINSTRET)
 DECLARE_CSR(mstatus, CSR_MSTATUS)
-DECLARE_CSR(mtvec, CSR_MTVEC)
-DECLARE_CSR(mtdeleg, CSR_MTDELEG)
+DECLARE_CSR(medeleg, CSR_MEDELEG)
+DECLARE_CSR(mideleg, CSR_MIDELEG)
 DECLARE_CSR(mie, CSR_MIE)
+DECLARE_CSR(mtvec, CSR_MTVEC)
 DECLARE_CSR(mtimecmp, CSR_MTIMECMP)
 DECLARE_CSR(mscratch, CSR_MSCRATCH)
 DECLARE_CSR(mepc, CSR_MEPC)
 DECLARE_CSR(mcause, CSR_MCAUSE)
 DECLARE_CSR(mbadaddr, CSR_MBADADDR)
 DECLARE_CSR(mip, CSR_MIP)
+DECLARE_CSR(mipi, CSR_MIPI)
+DECLARE_CSR(mucounteren, CSR_MUCOUNTEREN)
+DECLARE_CSR(mscounteren, CSR_MSCOUNTEREN)
+DECLARE_CSR(mucycle_delta, CSR_MUCYCLE_DELTA)
+DECLARE_CSR(mutime_delta, CSR_MUTIME_DELTA)
+DECLARE_CSR(muinstret_delta, CSR_MUINSTRET_DELTA)
+DECLARE_CSR(mscycle_delta, CSR_MSCYCLE_DELTA)
+DECLARE_CSR(mstime_delta, CSR_MSTIME_DELTA)
+DECLARE_CSR(msinstret_delta, CSR_MSINSTRET_DELTA)
+DECLARE_CSR(mcycle, CSR_MCYCLE)
 DECLARE_CSR(mtime, CSR_MTIME)
-DECLARE_CSR(mcpuid, CSR_MCPUID)
+DECLARE_CSR(minstret, CSR_MINSTRET)
+DECLARE_CSR(misa, CSR_MISA)
+DECLARE_CSR(mvendorid, CSR_MVENDORID)
+DECLARE_CSR(marchid, CSR_MARCHID)
 DECLARE_CSR(mimpid, CSR_MIMPID)
+DECLARE_CSR(mcfgaddr, CSR_MCFGADDR)
 DECLARE_CSR(mhartid, CSR_MHARTID)
 DECLARE_CSR(mtohost, CSR_MTOHOST)
 DECLARE_CSR(mfromhost, CSR_MFROMHOST)
 DECLARE_CSR(mreset, CSR_MRESET)
-DECLARE_CSR(send_ipi, CSR_SEND_IPI)
 DECLARE_CSR(cycleh, CSR_CYCLEH)
 DECLARE_CSR(timeh, CSR_TIMEH)
 DECLARE_CSR(instreth, CSR_INSTRETH)
-DECLARE_CSR(cyclehw, CSR_CYCLEHW)
-DECLARE_CSR(timehw, CSR_TIMEHW)
-DECLARE_CSR(instrethw, CSR_INSTRETHW)
-DECLARE_CSR(stimeh, CSR_STIMEH)
-DECLARE_CSR(stimehw, CSR_STIMEHW)
 DECLARE_CSR(mtimecmph, CSR_MTIMECMPH)
+DECLARE_CSR(mucycle_deltah, CSR_MUCYCLE_DELTAH)
+DECLARE_CSR(mutime_deltah, CSR_MUTIME_DELTAH)
+DECLARE_CSR(muinstret_deltah, CSR_MUINSTRET_DELTAH)
+DECLARE_CSR(mscycle_deltah, CSR_MSCYCLE_DELTAH)
+DECLARE_CSR(mstime_deltah, CSR_MSTIME_DELTAH)
+DECLARE_CSR(msinstret_deltah, CSR_MSINSTRET_DELTAH)
+DECLARE_CSR(mcycleh, CSR_MCYCLEH)
 DECLARE_CSR(mtimeh, CSR_MTIMEH)
+DECLARE_CSR(minstreth, CSR_MINSTRETH)
 #endif
 #ifdef DECLARE_CAUSE
 DECLARE_CAUSE("misaligned fetch", CAUSE_MISALIGNED_FETCH)
