@@ -9,19 +9,19 @@
 void trap_entry();
 void pop_tf(trapframe_t*);
 
-volatile uint64_t tohost __attribute__((aligned(64)));
-volatile uint64_t fromhost __attribute__((aligned(64)));
+#define pa2kva(pa) ((void*)(pa) - DRAM_BASE - MEGAPAGE_SIZE)
+#define uva2kva(pa) ((void*)(pa) - MEGAPAGE_SIZE)
+
+volatile uint64_t *tohost = ((uint64_t *)((MAX_TEST_PAGES << PGSHIFT) - MEGAPAGE_SIZE));
+volatile uint64_t *fromhost = ((uint64_t *)((MAX_TEST_PAGES << PGSHIFT) - MEGAPAGE_SIZE));
 
 static void do_tohost(uint64_t tohost_value)
 {
-  tohost = tohost_value;
-  while (fromhost == 0)
+  *tohost = tohost_value;
+  while (*fromhost == 0)
     ;
-  fromhost = 0;
+  *fromhost = 0;
 }
-
-#define pa2kva(pa) ((void*)(pa) - DRAM_BASE - MEGAPAGE_SIZE)
-#define uva2kva(pa) ((void*)(pa) - MEGAPAGE_SIZE)
 
 static uint64_t lfsr63(uint64_t x)
 {
@@ -231,6 +231,7 @@ void vm_boot(long test_addr, long seed)
     kernel_l3pt[i] = ((i + DRAM_BASE/RISCV_PGSIZE) << PTE_PPN_SHIFT) | PTE_V | PTE_TYPE_SRWX;
   }
   freelist_nodes[MAX_TEST_PAGES-1].next = 0;
+  kernel_l3pt[MAX_TEST_PAGES] = ((pte_t)HOST_BASE >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_TYPE_SRW; // map host to the last page
 
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
