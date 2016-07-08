@@ -67,10 +67,7 @@
 #define IRQ_COP      12
 #define IRQ_HOST     13
 
-#define DEFAULT_RSTVEC     0x00001000
-#define DEFAULT_NMIVEC     0x00001004
-#define DEFAULT_MTVEC      0x00001010
-#define CONFIG_STRING_ADDR 0x0000100C
+#define CONFIG_STRING_ADDR 0x0000000C
 #define DRAM_BASE          0x40000000
 #define HOST_BASE          0x00004000
 
