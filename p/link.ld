@@ -2,10 +2,10 @@ OUTPUT_ARCH( "riscv" )
 
 SECTIONS
 {
-  . = 0x80000000;
+  . = 0x40000000;
   .text.init : { *(.text.init) }
   .text : { *(.text) }
-  .data ALIGN(0x1000) : { *(.data) }
+  .data : { *(.data) }
   .bss : { *(.bss) }
   _end = .;
 }
