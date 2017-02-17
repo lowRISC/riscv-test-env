@@ -229,7 +229,7 @@ void vm_boot(long test_addr, long seed)
     kernel_l3pt[i] = ((i + DRAM_BASE/RISCV_PGSIZE) << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X;
   }
   freelist_nodes[MAX_TEST_PAGES-1].next = 0;
-  kernel_l3pt[MAX_TEST_PAGES] = ((pte_t)HOST_BASE >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_TYPE_SRW; // map host to the last page
+  kernel_l3pt[MAX_TEST_PAGES] = ((pte_t)HOST_BASE >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W; // map host to the last page
 
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
