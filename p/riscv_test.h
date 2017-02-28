@@ -80,6 +80,27 @@
 #define EXTRA_INIT
 #define EXTRA_INIT_TIMER
 
+#ifdef __TAG_MODE
+#define ENTER_TAG_MACHINE                                               \
+        csrr t5, tagctrl;                                               \
+        csrw mscratch, t5;                                              \
+        li   t6, TMASK_ALU;                                             \
+        li   t5, TMASK_LOAD_PROP;                                       \
+        or   t6, t6, t5;                                                \
+        li   t5, TMASK_STORE_PROP;                                      \
+        or   t6, t6, t5;                                                \
+        csrw tagctrl, t6;                                               \
+
+#define EXIT_TAG_MACHINE                                                \
+        csrr t5, mscratch;                                              \
+        csrw tagctrl, t5;                                               \
+
+#else
+#define ENTER_TAG_MACHINE
+#define EXIT_TAG_MACHINE
+#endif
+
+
 #define INTERRUPT_HANDLER j other_exception /* No interrupts should occur */
 
 #define RVTEST_CODE_BEGIN                                               \
@@ -92,6 +113,7 @@ _start:                                                                 \
         /* reset vector */                                              \
         j reset_vector;                                                 \
 trap_vector:                                                            \
+        ENTER_TAG_MACHINE                                               \
         /* test whether the test came from pass/fail */                 \
         csrr t5, mcause;                                                \
         li t6, CAUSE_USER_ECALL;                                        \
