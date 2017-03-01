@@ -136,8 +136,7 @@ handle_exception:                                                       \
         /* some unhandlable exception occurred */                       \
   1:    ori TESTNUM, TESTNUM, 1337;                                     \
   write_tohost:                                                         \
-        li t5, HOST_BASE;                                               \
-        sw TESTNUM, 0(t5);                                              \
+        sw TESTNUM, tohost, t5;                                         \
         j write_tohost;                                                 \
 reset_vector:                                                           \
         RISCV_MULTICORE_DISABLE;                                        \
@@ -167,7 +166,6 @@ reset_vector:                                                           \
         csrr a0, mhartid;                                               \
         mret;                                                           \
 1:
-
 
 //-----------------------------------------------------------------------
 // End Macro
@@ -201,7 +199,10 @@ reset_vector:                                                           \
 
 #define RVTEST_DATA_BEGIN                                               \
         EXTRA_DATA                                                      \
+        .align 6; .global tohost; tohost: .dword 0;                     \
+        .align 6; .global fromhost; fromhost: .dword 0;                 \
+        .align 4; .global begin_signature; begin_signature:
 
-#define RVTEST_DATA_END .align 4;
+#define RVTEST_DATA_END .align 4; .global end_signature; end_signature:
 
 #endif
