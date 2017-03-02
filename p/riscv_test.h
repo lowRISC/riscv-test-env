@@ -84,7 +84,7 @@
 #define ENTER_TAG_MACHINE                                               \
         csrr t5, tagctrl;                                               \
         csrw mscratch, t5;                                              \
-        li   t6, TMASK_ALU;                                             \
+        li   t6, TMASK_ALU_PROP;                                        \
         li   t5, TMASK_LOAD_PROP;                                       \
         or   t6, t6, t5;                                                \
         li   t5, TMASK_STORE_PROP;                                      \
