@@ -95,9 +95,25 @@
         csrr t5, mscratch;                                              \
         csrw tagctrl, t5;                                               \
 
+#define ENTER_TAG_SUPER                                                 \
+        csrr t5, tagctrl;                                               \
+        csrw sscratch, t5;                                              \
+        li   t6, TMASK_ALU_PROP;                                        \
+        li   t5, TMASK_LOAD_PROP;                                       \
+        or   t6, t6, t5;                                                \
+        li   t5, TMASK_STORE_PROP;                                      \
+        or   t6, t6, t5;                                                \
+        csrw tagctrl, t6;                                               \
+
+#define EXIT_TAG_SUPER                                                  \
+        csrr t5, sscratch;                                              \
+        csrw tagctrl, t5;                                               \
+
 #else
 #define ENTER_TAG_MACHINE
 #define EXIT_TAG_MACHINE
+#define ENTER_TAG_SUPER
+#define EXIT_TAG_SUPER
 #endif
 
 
@@ -153,7 +169,8 @@ reset_vector:                                                           \
                (1 << CAUSE_FAULT_FETCH) |                               \
                (1 << CAUSE_MISALIGNED_FETCH) |                          \
                (1 << CAUSE_USER_ECALL) |                                \
-               (1 << CAUSE_BREAKPOINT);                                 \
+               (1 << CAUSE_BREAKPOINT) |                                \
+               (1 << CAUSE_TAG_CHECK_FAIL);                             \
         csrw medeleg, t0;                                               \
         csrr t1, medeleg;                                               \
         bne t0, t1, other_exception;                                    \
