@@ -68,12 +68,8 @@
 #define IRQ_COP      12
 #define IRQ_HOST     13
 
-#define DEFAULT_RSTVEC     0x00001000
-#define DEFAULT_NMIVEC     0x00001004
-#define DEFAULT_MTVEC      0x00001010
-#define CONFIG_STRING_ADDR 0x0000100C
-#define EXT_IO_BASE        0x40000000
-#define DRAM_BASE          0x80000000
+#define CONFIG_STRING_ADDR 0x0000000C
+#define HOST_BASE          0x00004000
 
 // tagged memory configuration
 #define TAG_BITS                4
@@ -169,6 +165,12 @@
   else \
     asm volatile ("csrrc %0, " #reg ", %1" : "=r"(__tmp) : "r"(bit)); \
   __tmp; })
+
+#define stm_trace(id, value) \
+  { \
+  asm volatile ("mv a0,%0": :"r" ((uint64_t)value) : "a0"); \
+  asm volatile ("csrw swtrace, %0" :: "r"(id)); \
+  }
 
 #define rdtime() read_csr(time)
 #define rdcycle() read_csr(cycle)
@@ -661,6 +663,7 @@
 #define CSR_SBADADDR 0x143
 #define CSR_SIP 0x144
 #define CSR_SPTBR 0x180
+#define CSR_SASID 0x181
 #define CSR_SCYCLE 0xd00
 #define CSR_STIME 0xd01
 #define CSR_SINSTRET 0xd02
@@ -967,6 +970,7 @@ DECLARE_CSR(scause, CSR_SCAUSE)
 DECLARE_CSR(sbadaddr, CSR_SBADADDR)
 DECLARE_CSR(sip, CSR_SIP)
 DECLARE_CSR(sptbr, CSR_SPTBR)
+DECLARE_CSR(sasid, CSR_SASID)
 DECLARE_CSR(scycle, CSR_SCYCLE)
 DECLARE_CSR(stime, CSR_STIME)
 DECLARE_CSR(sinstret, CSR_SINSTRET)
@@ -1023,5 +1027,5 @@ DECLARE_CAUSE("user_ecall", CAUSE_USER_ECALL)
 DECLARE_CAUSE("supervisor_ecall", CAUSE_SUPERVISOR_ECALL)
 DECLARE_CAUSE("hypervisor_ecall", CAUSE_HYPERVISOR_ECALL)
 DECLARE_CAUSE("machine_ecall", CAUSE_MACHINE_ECALL)
-DECLARE_CAUSE("tag check failure", CAUSE_TAG_CHECK_FAIL)
+DECLARE_CAUSE("tag check fail", CAUSE_TAG_CHECK_FAIL)
 #endif
