@@ -85,32 +85,32 @@
 
 #ifdef __TAG_MODE
 #define ENTER_TAG_MACHINE                                               \
-        csrr t5, tagctrl;                                               \
+        csrr t5, mtagctrl;                                              \
         csrw mscratch, t5;                                              \
         li   t6, TMASK_ALU_PROP;                                        \
         li   t5, TMASK_LOAD_PROP;                                       \
         or   t6, t6, t5;                                                \
         li   t5, TMASK_STORE_PROP;                                      \
         or   t6, t6, t5;                                                \
-        csrw tagctrl, t6;                                               \
+        csrw mtagctrl, t6;                                              \
 
 #define EXIT_TAG_MACHINE                                                \
         csrr t5, mscratch;                                              \
-        csrw tagctrl, t5;                                               \
+        csrw mtagctrl, t5;                                              \
 
 #define ENTER_TAG_SUPER                                                 \
-        csrr t5, tagctrl;                                               \
+        csrr t5, stagctrl;                                              \
         csrw sscratch, t5;                                              \
         li   t6, TMASK_ALU_PROP;                                        \
         li   t5, TMASK_LOAD_PROP;                                       \
         or   t6, t6, t5;                                                \
         li   t5, TMASK_STORE_PROP;                                      \
         or   t6, t6, t5;                                                \
-        csrw tagctrl, t6;                                               \
+        csrw stagctrl, t6;                                              \
 
 #define EXIT_TAG_SUPER                                                  \
         csrr t5, sscratch;                                              \
-        csrw tagctrl, t5;                                               \
+        csrw stagctrl, t5;                                              \
 
 #else
 #define ENTER_TAG_MACHINE
