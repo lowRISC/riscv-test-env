@@ -5,8 +5,8 @@
 
 #include "../encoding.h"
 
-// for ISA regression, DRAM is fixed at 0x40000000 (BootRAM)
-#define DRAM_BASE (0x40000000)
+// for ISA regression, DRAM is fixed at 0x80000000 (Spike configuration)
+#define DRAM_BASE (0x80000000)
 
 //-----------------------------------------------------------------------
 // Begin Macro
