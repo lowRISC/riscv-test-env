@@ -38,6 +38,16 @@ handle_reset:
 
   .globl  pop_tf
 pop_tf:
+  # save current stagctrl
+  csrr  t0, stagctrl
+
+  # set stagctrl appropriately
+  li    x1, TMASK_LOAD_PROP
+  csrw  stagctrl, x1
+
+  # write stagctrl to the stack
+  STORE t0, 36*REGBYTES(a0)
+        
   LOAD  t0,33*REGBYTES(a0)
   csrw  sepc,t0
   LOAD  x1,1*REGBYTES(a0)
@@ -70,12 +80,45 @@ pop_tf:
   LOAD  x29,29*REGBYTES(a0)
   LOAD  x30,30*REGBYTES(a0)
   LOAD  x31,31*REGBYTES(a0)
+
+  # load stagctrl in advance, so we can restore a0
+  # spill a GPR to use
+  csrw  stagctrl_scratch, x1
+  LOAD  x1, 36*REGBYTES(a0)
+
+  # restore a0
   LOAD  a0,10*REGBYTES(a0)
+
+  # wait to actually restore stagctrl until here, so we still
+  # propagate tags on the load of a0
+  csrw  stagctrl, x1
+        
+  # restore the gpr
+  csrr  x1, stagctrl_scratch
   sret
 
   .global  trap_entry
 trap_entry:
   csrrw sp, sscratch, sp
+        
+  # spill a gpr
+  csrw   stagctrl_scratch, x1
+        
+  # save current stagctrl
+  csrr   x1, stagctrl
+        
+  # temporarily zero stagctrl
+  csrw   stagctrl, zero
+
+  # save stagctrl to stack
+  STORE  x1, 36*REGBYTES(sp)
+
+  # set stagctrl to save registers
+  li     x1, TMASK_STORE_PROP
+  csrw   stagctrl, x1
+
+  # restore spilled register
+  csrr   x1, stagctrl_scratch      
 
   # save gprs
   STORE  x1,1*REGBYTES(sp)
@@ -121,6 +164,10 @@ trap_entry:
   STORE  t0,34*REGBYTES(sp)
   csrr   t0,scause
   STORE  t0,35*REGBYTES(sp)
+
+  # restore stagctrl
+  LOAD   t0, 36*REGBYTES(sp)
+  csrw   stagctrl, t0
 
   move  a0, sp
   j handle_trap

@@ -51,7 +51,7 @@ userstart:                                                              \
 #define PGSIZE (1UL << PGSHIFT)
 
 #ifdef __riscv64
-# define SIZEOF_TRAPFRAME_T 288
+# define SIZEOF_TRAPFRAME_T 296
 #else
 # define SIZEOF_TRAPFRAME_T 144
 #endif
@@ -73,6 +73,7 @@ typedef struct
   long epc;
   long badvaddr;
   long cause;
+  long stagctrl;
 } trapframe_t;
 #endif
 
