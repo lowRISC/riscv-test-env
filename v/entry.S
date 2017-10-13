@@ -1,6 +1,6 @@
 #include "riscv_test.h"
 
-#ifdef __riscv64
+#if __riscv_xlen == 64
 # define STORE    sd
 # define LOAD     ld
 # define REGBYTES 8
@@ -13,8 +13,8 @@
 #define STACK_TOP (_end + 4096)
 
   .section ".text.init","ax",@progbits
-
-reset_vector:
+  .globl _start
+_start:
   j handle_reset
 
   /* NMI vector */
@@ -32,7 +32,6 @@ handle_reset:
   slli t0, t0, 12
   add sp, sp, t0
   csrw mscratch, sp
-  li a1, 1337
   la a0, userstart
   j vm_boot
 

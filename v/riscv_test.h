@@ -15,7 +15,6 @@
 #undef RVTEST_CODE_BEGIN
 #define RVTEST_CODE_BEGIN                                               \
         .text;                                                          \
-        .align  13;                                                     \
         .global userstart;                                              \
 userstart:                                                              \
         init
@@ -34,9 +33,6 @@ userstart:                                                              \
 // Data Section Macro
 //-----------------------------------------------------------------------
 
-#undef RVTEST_DATA_BEGIN
-#define RVTEST_DATA_BEGIN
-
 #undef RVTEST_DATA_END
 #define RVTEST_DATA_END
 
@@ -50,11 +46,7 @@ userstart:                                                              \
 #define PGSHIFT 12
 #define PGSIZE (1UL << PGSHIFT)
 
-#ifdef __riscv64
-# define SIZEOF_TRAPFRAME_T 288
-#else
-# define SIZEOF_TRAPFRAME_T 144
-#endif
+#define SIZEOF_TRAPFRAME_T ((__riscv_xlen / 8) * 36)
 
 #ifndef __ASSEMBLER__
 
