@@ -200,8 +200,8 @@ reset_vector:                                                           \
                (1 << CAUSE_FETCH_PAGE_FAULT) |                          \
                (1 << CAUSE_MISALIGNED_FETCH) |                          \
                (1 << CAUSE_USER_ECALL) |                                \
-               (1 << CAUSE_BREAKPOINT) |                                \
-               (1 << CAUSE_TAG_CHECK_FAIL);                             \
+               (1 << CAUSE_BREAKPOINT);/* |                                \
+               (1 << CAUSE_TAG_CHECK_FAIL);*/                             \
         csrw medeleg, t0;                                               \
         csrr t1, medeleg;                                               \
         bne t0, t1, other_exception;                                    \
