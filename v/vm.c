@@ -14,8 +14,8 @@ void pop_tf(trapframe_t*);
 
 #define flush_page(addr) asm volatile ("sfence.vma %0" : : "r" (addr) : "memory")
 
-volatile uint64_t *tohost = ((uint64_t *)((MAX_TEST_PAGES << PGSHIFT) - MEGAPAGE_SIZE));
-volatile uint64_t *fromhost = ((uint64_t *)((MAX_TEST_PAGES << PGSHIFT) - MEGAPAGE_SIZE));
+volatile uint64_t *tohost = ((uint64_t *)( - 2 * MEGAPAGE_SIZE));
+volatile uint64_t *fromhost = ((uint64_t *)( - 2 * MEGAPAGE_SIZE));
 
 static void do_tohost(uint64_t tohost_value)
 {
@@ -64,9 +64,10 @@ void wtf()
 #define l1pt pt[0]
 #define user_l2pt pt[1]
 #if __riscv_xlen == 64
-# define NPT 4
-#define kernel_l2pt pt[2]
+# define NPT 5
+# define kernel_l2pt pt[2]
 # define user_l3pt pt[3]
+# define host_l3pt pt[4]
 #else
 # define NPT 2
 # define user_l3pt user_l2pt
@@ -266,7 +267,10 @@ void vm_boot(uintptr_t test_addr)
     random = LFSR_NEXT(random);
   }
   freelist_nodes[MAX_TEST_PAGES-1].next = 0;
-  kernel_l3pt[MAX_TEST_PAGES] = ((pte_t)HOST_BASE >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W; // map host to the last page
+
+  // map host
+  host_l3pt[0] = ((pte_t)HOST_BASE >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+  kernel_l2pt[PTES_PER_PT-2] = ((pte_t)host_l3pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
 
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
