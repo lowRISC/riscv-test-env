@@ -207,8 +207,9 @@ static void coherence_torture()
   }
 }
 
-void vm_boot(uintptr_t test_addr)
+void vm_boot(void)
 {
+  uintptr_t test_addr = 0x80200000;
   unsigned int random = ENTROPY;
   if (read_csr(mhartid) > 0)
     coherence_torture();
