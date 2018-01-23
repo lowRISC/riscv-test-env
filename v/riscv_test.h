@@ -12,6 +12,13 @@
 #undef RVTEST_FP_ENABLE
 #define RVTEST_FP_ENABLE fssr x0
 
+#undef RVTEST_CODE_BEGIN
+#define RVTEST_CODE_BEGIN                                               \
+        .text;                                                          \
+        .global userstart;                                              \
+userstart:                                                              \
+        init
+
 //-----------------------------------------------------------------------
 // Pass/Fail Macro
 //-----------------------------------------------------------------------

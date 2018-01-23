@@ -34,6 +34,7 @@ handle_reset:
   slli t0, t0, 12
   add sp, sp, t0
   csrw mscratch, sp
+  la a0, userstart
   j vm_boot
 
   .globl  pop_tf

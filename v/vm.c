@@ -5,19 +5,11 @@
 #include <stdio.h>
 
 #include "riscv_test.h"
+#include "mini-printf.h"
+#include "hid.h"
 
 void trap_entry();
 void pop_tf(trapframe_t*);
-
-volatile uint64_t tohost;
-volatile uint64_t fromhost;
-
-static void do_tohost(uint64_t tohost_value)
-{
-  while (tohost)
-    fromhost = 0;
-  tohost = tohost_value;
-}
 
 #define pa2kva(pa) ((void*)(pa) - DRAM_BASE - MEGAPAGE_SIZE)
 #define uva2kva(pa) ((void*)(pa) - MEGAPAGE_SIZE)
@@ -32,7 +24,7 @@ static uint64_t lfsr63(uint64_t x)
 
 static void cputchar(int x)
 {
-  do_tohost(0x0101000000000000 | (unsigned char)x);
+  hid_console_putchar(x);
 }
 
 static void cputstring(const char* s)
@@ -43,7 +35,6 @@ static void cputstring(const char* s)
 
 static void terminate(int code)
 {
-  do_tohost(code);
   while (1);
 }
 
@@ -161,6 +152,7 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
 
 void handle_trap(trapframe_t* tf)
 {
+  printf("handle_trap(%d);\n", tf->cause);
   if (tf->cause == CAUSE_USER_ECALL)
   {
     int n = tf->gpr[10];
@@ -207,15 +199,16 @@ static void coherence_torture()
   }
 }
 
-void vm_boot(void)
+void vm_boot(uintptr_t test_addr)
 {
-  uintptr_t test_addr = 0x80200000;
   unsigned int random = ENTROPY;
   if (read_csr(mhartid) > 0)
     coherence_torture();
 
   _Static_assert(SIZEOF_TRAPFRAME_T == sizeof(trapframe_t), "???");
 
+  hid_init();
+  
 #if (MAX_TEST_PAGES > PTES_PER_PT) || (DRAM_BASE % MEGAPAGE_SIZE) != 0
 # error
 #endif
