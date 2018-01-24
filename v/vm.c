@@ -152,7 +152,7 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
 
 void handle_trap(trapframe_t* tf)
 {
-  printf("handle_trap(%d);\n", tf->cause);
+//  printf("handle_trap(%d);\n", tf->cause);
   if (tf->cause == CAUSE_USER_ECALL)
   {
     int n = tf->gpr[10];
@@ -206,8 +206,6 @@ void vm_boot(uintptr_t test_addr)
     coherence_torture();
 
   _Static_assert(SIZEOF_TRAPFRAME_T == sizeof(trapframe_t), "???");
-
-  hid_init();
   
 #if (MAX_TEST_PAGES > PTES_PER_PT) || (DRAM_BASE % MEGAPAGE_SIZE) != 0
 # error
