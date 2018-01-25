@@ -16,7 +16,6 @@
   .globl _start
 _start:
 RVTEST_RV64M
-RVTEST_CODE_BEGIN
   j handle_reset
 
   /* NMI vector */
@@ -143,4 +142,4 @@ trap_entry:
   STORE  t0,35*REGBYTES(sp)
 
   move  a0, sp
-  j handle_trap
+        j handle_trap

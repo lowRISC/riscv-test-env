@@ -24,7 +24,10 @@ static uint64_t lfsr63(uint64_t x)
 
 static void __attribute__ ((noinline)) cputchar(int ch)
 {
-  asm("ecall" : : "r" (ch));
+  //  asm("ecall" : : "r" (ch));
+  uint32_t *leds = (uint32_t *) 0x4101003C;
+  *leds = 0;
+  *leds = ch;
 }
 
 static void cputstring(const char* s)
@@ -71,13 +74,14 @@ freelist_t *freelist_head, *freelist_tail;
 
 void printhex(uint64_t x)
 {
-  char str[17];
+  char str[18];
   for (int i = 0; i < 16; i++)
   {
-    str[15-i] = (x & 0xF) + ((x & 0xF) < 10 ? '0' : 'a'-10);
+    str[15-i] = (x & 0xF) + ((x & 0xF) < 10 ? '0' : 'A'-10);
     x >>= 4;
   }
-  str[16] = 0;
+  str[16] = ' ';
+  str[17] = 0;
 
   cputstring(str);
 }
