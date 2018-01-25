@@ -22,9 +22,9 @@ static uint64_t lfsr63(uint64_t x)
   return (x >> 1) | (bit << 62);
 }
 
-static void cputchar(int x)
+static void __attribute__ ((noinline)) cputchar(int ch)
 {
-  hid_console_putchar(x);
+  asm("ecall" : : "r" (ch));
 }
 
 static void cputstring(const char* s)
@@ -113,6 +113,10 @@ static void evict(unsigned long addr)
 
 void handle_fault(uintptr_t addr, uintptr_t cause)
 {
+  cputchar('H');
+  cputchar('F');
+  cputchar(' ');
+  printhex(addr);
   assert(addr >= PGSIZE && addr < MAX_TEST_PAGES * PGSIZE);
   addr = addr/PGSIZE*PGSIZE;
 
@@ -152,6 +156,9 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
 
 void handle_trap(trapframe_t* tf)
 {
+  //  asm("sbreak");
+  //  early_putchar('#');
+  //  hid_console_putchar('#');
 //  printf("handle_trap(%d);\n", tf->cause);
   if (tf->cause == CAUSE_USER_ECALL)
   {
@@ -210,6 +217,8 @@ void vm_boot(uintptr_t test_addr)
 #endif
   // map user to lowermost megapage
   l1pt[0] = ((pte_t)user_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
+  // map I/O to next gigapage
+  l1pt[1] = ((pte_t)0x40000000 >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
   // map kernel to uppermost megapage
 #if __riscv_xlen == 64
   l1pt[PTES_PER_PT-1] = ((pte_t)kernel_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
@@ -230,14 +239,15 @@ void vm_boot(uintptr_t test_addr)
                 "csrw pmpaddr0, %1\n\t"
                 "csrw pmpcfg0, %0\n\t"
                 ".align 2\n\t"
-                "1:"
+                "1:\n\t"
+                "csrw mtvec, t0"
                 : : "r" (pmpc), "r" (-1UL) : "t0");
 
   // set up supervisor trap handling
   write_csr(stvec, pa2kva(trap_entry));
   write_csr(sscratch, pa2kva(read_csr(mscratch)));
   write_csr(medeleg,
-    (1 << CAUSE_USER_ECALL) |
+            //    (1 << CAUSE_USER_ECALL) |
     (1 << CAUSE_FETCH_PAGE_FAULT) |
     (1 << CAUSE_LOAD_PAGE_FAULT) |
     (1 << CAUSE_STORE_PAGE_FAULT));

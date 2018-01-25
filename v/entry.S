@@ -15,7 +15,7 @@
   .section ".text.init","ax",@progbits
   .globl _start
 _start:
-RVTEST_RV64U
+RVTEST_RV64M
 RVTEST_CODE_BEGIN
   j handle_reset
 
@@ -23,13 +23,36 @@ RVTEST_CODE_BEGIN
 nmi_vector:
   j wtf
 
+  .globl trap_vector        
 trap_vector:
-  j wtf
+        csrrw sp, mscratch, sp
+        STORE a1, 11*REGBYTES(sp)
+        li a1, 0x4101003C
+        sw a0, (a1)
+        csrr a1, mepc
+        addi a1, a1, 4
+        csrw mepc, a1
+        csrw mscratch, sp
+        LOAD a1, 11*REGBYTES(sp)
+        mret
 
 handle_reset:
   la t0, trap_vector
-  csrw stvec, t0
+  csrw mtvec, t0
   la sp, STACK_TOP - SIZEOF_TRAPFRAME_T
+  # Clear BSS segment
+  la a4, _bss_start
+  la a5, _bss_end
+  sub a5, a5, a4      
+2:      
+  STORE zero, 0(a4)
+  addi a4, a4, 8
+  addi a5, a5, -8
+  bgtz a5, 2b
+  csrr t0, mhartid
+  slli t0, t0, 12
+  add sp, sp, t0
+  csrw mscratch, sp
   la a0, userstart
   j vm_boot
 
