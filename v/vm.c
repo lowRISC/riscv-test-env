@@ -202,8 +202,6 @@ static void coherence_torture()
 void vm_boot(uintptr_t test_addr)
 {
   unsigned int random = ENTROPY;
-  if (read_csr(mhartid) > 0)
-    coherence_torture();
 
   _Static_assert(SIZEOF_TRAPFRAME_T == sizeof(trapframe_t), "???");
   

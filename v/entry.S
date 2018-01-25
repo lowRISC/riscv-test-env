@@ -15,7 +15,7 @@
   .section ".text.init","ax",@progbits
   .globl _start
 _start:
-RVTEST_RV64M
+RVTEST_RV64U
 RVTEST_CODE_BEGIN
   j handle_reset
 
@@ -28,12 +28,8 @@ trap_vector:
 
 handle_reset:
   la t0, trap_vector
-  csrw mtvec, t0
+  csrw stvec, t0
   la sp, STACK_TOP - SIZEOF_TRAPFRAME_T
-  csrr t0, mhartid
-  slli t0, t0, 12
-  add sp, sp, t0
-  csrw mscratch, sp
   la a0, userstart
   j vm_boot
 
