@@ -15,8 +15,27 @@
   .section ".text.init","ax",@progbits
   .globl _start
 _start:
-RVTEST_RV64M
-  j handle_reset
+  RVTEST_RV64M
+        auipc t0, 0
+        li t1, DRAM_BASE
+        sub t2, t0, t1
+        beqz t2, handle_reset
+        # Let's just wait a bit in case we want to debug this bit
+        li t2, 10000000
+1:      addi t2, t2, -1
+        bnez t2, 1b
+        # Relocate to correct place in DRAM
+        mv ra, t1
+        la t2, _bss_start
+        sub t2, t2, t0
+2:
+        LOAD s0, 0(t0)
+        STORE s0, 0(t1)
+        addi t0, t0, 8
+        addi t1, t1, 8
+        addi t2, t2, -8
+        bgtz t2, 2b
+        ret
 
   /* NMI vector */
 nmi_vector:

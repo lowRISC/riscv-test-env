@@ -1,5 +1,9 @@
 *~
-cnvmem.mem
+cnvmem
+cnvmem.*
 vm
 vm.bin
 vm.dis
+*.i
+*.s
+*.o

@@ -22,12 +22,9 @@ static uint64_t lfsr63(uint64_t x)
   return (x >> 1) | (bit << 62);
 }
 
-static void __attribute__ ((noinline)) cputchar(int ch)
+static void cputchar(int ch)
 {
-  //  asm("ecall" : : "r" (ch));
-  uint32_t *leds = (uint32_t *) 0x4101003C;
-  *leds = 0;
-  *leds = ch;
+  hid_console_putchar(ch);
 }
 
 static void cputstring(const char* s)
@@ -38,6 +35,8 @@ static void cputstring(const char* s)
 
 static void terminate(int code)
 {
+  uint32_t *leds = (uint32_t *) 0x4101003C;
+  *leds = code;
   while (1);
 }
 
@@ -160,10 +159,6 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
 
 void handle_trap(trapframe_t* tf)
 {
-  //  asm("sbreak");
-  //  early_putchar('#');
-  //  hid_console_putchar('#');
-//  printf("handle_trap(%d);\n", tf->cause);
   if (tf->cause == CAUSE_USER_ECALL)
   {
     int n = tf->gpr[10];
@@ -213,7 +208,11 @@ static void coherence_torture()
 void vm_boot(uintptr_t test_addr)
 {
   unsigned int random = ENTROPY;
+  long delay = 0;
 
+  hid_init();
+  cputstring("vm_boot called\n");
+  
   _Static_assert(SIZEOF_TRAPFRAME_T == sizeof(trapframe_t), "???");
   
 #if (MAX_TEST_PAGES > PTES_PER_PT) || (DRAM_BASE % MEGAPAGE_SIZE) != 0
@@ -247,6 +246,8 @@ void vm_boot(uintptr_t test_addr)
                 "csrw mtvec, t0"
                 : : "r" (pmpc), "r" (-1UL) : "t0");
 
+  cputstring("pmps set up\n");
+  
   // set up supervisor trap handling
   write_csr(stvec, pa2kva(trap_entry));
   write_csr(sscratch, pa2kva(read_csr(mscratch)));
@@ -273,5 +274,8 @@ void vm_boot(uintptr_t test_addr)
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
   tf.epc = test_addr - DRAM_BASE;
+
+  cputstring("ready to pop trap frame\n");
+  
   pop_tf(&tf);
 }

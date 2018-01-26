@@ -3,13 +3,15 @@
 #include "hid.h"
 #include "mini-printf.h"
 
-volatile uint32_t *sd_base = (uint32_t *)0x41010000;
-volatile uint32_t *hid_base_ptr = (uint32_t *)0x41000000;
-size_t err = 0x3000, eth = 0x41020000, ddr = 0x80000000, rom = 0x10000, bram = 0x40000000, intc = 0xc000000, clin = 0, hid = 0x41000000;
+//enum {scroll_start=4096-256};
+enum {scroll_start=0};
+volatile uint32_t *const sd_base = (uint32_t *)0x41010000;
+volatile uint32_t *const hid_base_ptr = (uint32_t *)0x41000000;
+const size_t err = 0x3000, eth = 0x41020000, ddr = 0x80000000, rom = 0x10000, bram = 0x40000000, intc = 0xc000000, clin = 0, hid = 0x41000000;
+static int addr_int = scroll_start;
 
 void hid_console_putchar(unsigned char ch)
 {
-  static int addr_int = 4096-256;
   switch(ch)
     {
     case 8: case 127: if (addr_int & 127) hid_base_ptr[HID_VGA+(--addr_int)] = ' '; break;
@@ -31,6 +33,8 @@ void hid_console_putchar(unsigned char ch)
 
 void hid_init(void)
 {
+  if (addr_int != scroll_start)
+    addr_int = scroll_start;
 #if 0  
   size_t unknown = 0;
   char *unknownstr, *config = (char *)0x10000;
