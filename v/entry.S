@@ -21,7 +21,7 @@ _start:
         sub t2, t0, t1
         beqz t2, handle_reset
         # Let's just wait a bit in case we want to debug this bit
-        li t2, 10000000
+        li t2, 10 # 10000000
 1:      addi t2, t2, -1
         bnez t2, 1b
         # Relocate to correct place in DRAM
@@ -44,7 +44,18 @@ nmi_vector:
   .globl trap_vector        
 trap_vector:
         csrrw sp, mscratch, sp
+        STORE a0, 11*REGBYTES(sp)
         STORE a1, 11*REGBYTES(sp)
+        csrr a1, mcause
+        addi a1,a1,-8
+        beqz a1, 2f     # Environment call from U-mode
+        csrr a0, mcause
+        li a1, 0x4101003C
+        sw a0, (a1)
+        csrr a1, mepc
+1:
+        j 1b
+2:
         li a1, 0x4101003C
         sw a0, (a1)
         csrr a1, mepc
@@ -112,6 +123,7 @@ pop_tf:
   sret
 
   .global  trap_entry
+  .align 4
 trap_entry:
   csrrw sp, sscratch, sp
 

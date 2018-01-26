@@ -16,7 +16,8 @@ SECTIONS
   .text : { *(.text) } :text
   .rodata : { *(.rodata*) } :text
   . = ALIGN(0x1000);
-  .data : { *(.data) *(.sdata) } :data
+  .data : { *(.data) *(.sdata) *(.sbss) } :data
+  . = ALIGN(0x8);
   _bss_start = .;
   .bss : { *(.bss) }
   _bss_end = .;
