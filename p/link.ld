@@ -11,7 +11,7 @@ PHDRS
 
 SECTIONS
 {
-  . = 0x80200000;
+  . = 0x80000000;
   .text.init : { *(.text.init) } :text
   .text : { *(.text) } :text
   .rodata : { *(.rodata*) } :text

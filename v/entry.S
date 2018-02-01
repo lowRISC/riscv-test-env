@@ -44,7 +44,7 @@ nmi_vector:
   .globl trap_vector        
 trap_vector:
         csrrw sp, mscratch, sp
-        STORE a0, 11*REGBYTES(sp)
+        STORE a0, 10*REGBYTES(sp)
         STORE a1, 11*REGBYTES(sp)
         csrr a1, mcause
         addi a1,a1,-8
@@ -62,6 +62,7 @@ trap_vector:
         addi a1, a1, 4
         csrw mepc, a1
         csrw mscratch, sp
+        LOAD a0, 10*REGBYTES(sp)
         LOAD a1, 11*REGBYTES(sp)
         mret
 
