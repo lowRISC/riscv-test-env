@@ -46,6 +46,8 @@ trap_vector:
         csrrw sp, mscratch, sp
         STORE a0, 10*REGBYTES(sp)
         STORE a1, 11*REGBYTES(sp)
+        STORE a2, 12*REGBYTES(sp)
+        STORE a3, 13*REGBYTES(sp)
         csrr a1, mcause
         addi a1,a1,-8
         beqz a1, 2f     # Environment call from U-mode
@@ -58,12 +60,25 @@ trap_vector:
 2:
         li a1, 0x4101003C
         sw a0, (a1)
+#if 1
+        la a2, cursor
+        lw a3, 0(a2)
+        addi a3, a3, 4
+        li a1, 0x3FFF
+        and a3, a3, a1
+        sw a3, 0(a2)
+        li a1, 0x41008000
+        add a1, a1, a3
+        sw a0, (a1)
+#endif
         csrr a1, mepc
         addi a1, a1, 4
         csrw mepc, a1
         csrw mscratch, sp
         LOAD a0, 10*REGBYTES(sp)
         LOAD a1, 11*REGBYTES(sp)
+        LOAD a2, 12*REGBYTES(sp)
+        LOAD a3, 13*REGBYTES(sp)
         mret
 
 handle_reset:
@@ -175,3 +190,9 @@ trap_entry:
 
   move  a0, sp
         j handle_trap
+#if 1
+        .data
+cursor: 
+        .word   0
+#endif
+        
