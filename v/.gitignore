@@ -7,3 +7,7 @@ vm.dis
 *.i
 *.s
 *.o
+check
+dram
+dram.bin
+dram.dis

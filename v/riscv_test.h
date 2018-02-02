@@ -58,6 +58,15 @@ typedef unsigned long pte_t;
 #define PTES_PER_PT (1UL << RISCV_PGLEVEL_BITS)
 #define MEGAPAGE_SIZE (PTES_PER_PT * PGSIZE)
 
+enum {__zero, __ra, __sp, __gp,
+      __tp, __t0, __t1, __t2,
+      __fp, __s1, __a0, __a1,
+      __a2, __a3, __a4, __a5,
+      __a6, __a7, __s2, __s3,
+      __s4, __s5, __s6, __s7,
+      __s8, __s9, __s10, __s11,
+      __t3, __t4, __t5, __t6};
+
 typedef struct
 {
   long gpr[32];

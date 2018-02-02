@@ -35,12 +35,19 @@
 extern "C" {
 #endif
 
+#define write sys_write
+#define sbrk sys_sbrk
+#define rand mini_rand
+
 #include <stdarg.h>
+#include <unistd.h>
+#include <stdlib.h>
 
 int mini_vsnprintf(char* buffer, unsigned int buffer_len, const char *fmt, va_list va);
 int mini_snprintf(char* buffer, unsigned int buffer_len, const char *fmt, ...);
 int mini_sprintf(char* buffer, const char *fmt, ...);
 int mini_printf (const char *fmt, ...);
+int main(void);
 
 #ifdef __cplusplus
 }
@@ -50,5 +57,4 @@ int mini_printf (const char *fmt, ...);
 #define snprintf mini_snprintf
 #define sprintf mini_sprintf
 #define printf mini_printf
-
 #endif

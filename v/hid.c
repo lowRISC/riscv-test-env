@@ -121,3 +121,35 @@ void hid_init(void)
 void hid_send_string(const char *str) {
   while (*str) hid_console_putchar(*str++);
 }
+
+void handle_interrupt(long cause)
+{
+  int mip;
+  char code[20];
+  cause &= 0x7FFFFFFF;
+#ifdef VERBOSE_INTERRUPT
+  switch(cause)
+    {
+    case IRQ_S_SOFT   : strcpy(code, "IRQ_S_SOFT   "); break;
+    case IRQ_H_SOFT   : strcpy(code, "IRQ_H_SOFT   "); break;
+    case IRQ_M_SOFT   : strcpy(code, "IRQ_M_SOFT   "); break;
+    case IRQ_S_TIMER  : strcpy(code, "IRQ_S_TIMER  "); break;
+    case IRQ_H_TIMER  : strcpy(code, "IRQ_H_TIMER  "); break;
+    case IRQ_M_TIMER  : strcpy(code, "IRQ_M_TIMER  "); break;
+    case IRQ_S_DEV    : strcpy(code, "IRQ_S_DEV    "); break;
+    case IRQ_H_DEV    : strcpy(code, "IRQ_H_DEV    "); break;
+    case IRQ_M_DEV    : strcpy(code, "IRQ_M_DEV    "); break;
+    case IRQ_COP      : strcpy(code, "IRQ_COP      "); break;
+    case IRQ_HOST     : strcpy(code, "IRQ_HOST     "); break;
+    default           : snprintf(code, sizeof(code), "IRQ_%x     ", cause);
+    }
+ hid_send_string(code);
+ mip = read_csr(mip);
+ snprintf(code, sizeof(code), "mip=%x\n", mip);
+ hid_send_string(code);
+#endif
+#if 0 
+ if (cause==IRQ_M_DEV)
+   external_interrupt();
+#endif 
+}

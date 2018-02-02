@@ -8,6 +8,11 @@
 #include "mini-printf.h"
 #include "hid.h"
 
+extern char userstart[];
+extern char userstop[];
+
+static long __brk;
+
 void trap_entry();
 void pop_tf(trapframe_t*);
 
@@ -37,7 +42,8 @@ static void terminate(int code)
 {
   uint32_t *leds = (uint32_t *) 0x4101003C;
   *leds = code;
-  while (1);
+  while (1)
+    asm("ebreak");
 }
 
 void wtf()
@@ -49,8 +55,8 @@ void wtf()
 #define stringify(x) stringify1(x)
 #define assert(x) do { \
   if (x) break; \
-  cputstring("Assertion failed: " stringify(x) "\n"); \
-  terminate(3); \
+  cputstring("\nAssertion failed: " stringify(x) "\n"); \
+  terminate(0x55); \
 } while(0)
 
 #define l1pt pt[0]
@@ -71,18 +77,17 @@ freelist_t user_mapping[MAX_TEST_PAGES];
 freelist_t freelist_nodes[MAX_TEST_PAGES];
 freelist_t *freelist_head, *freelist_tail;
 
-void printhex(uint64_t x)
+void printhex(uint64_t x, int wid)
 {
-  char str[18];
-  for (int i = 0; i < 16; i++)
-  {
-    str[15-i] = (x & 0xF) + ((x & 0xF) < 10 ? '0' : 'A'-10);
-    x >>= 4;
-  }
-  str[16] = ' ';
-  str[17] = 0;
+  if ((x > 15) || wid > 0) printhex(x >> 4, wid-1);
+  x &= 15;
+  cputchar(x + (x < 10 ? '0' : 'A'-10));
+}
 
-  cputstring(str);
+void printdec(uint64_t x)
+{
+  if (x > 9) printdec(x / 10);
+  cputchar(x % 10 + '0');
 }
 
 static void evict(unsigned long addr)
@@ -114,12 +119,14 @@ static void evict(unsigned long addr)
   }
 }
 
-void handle_fault(uintptr_t addr, uintptr_t cause)
+void handle_fault(uintptr_t addr, uintptr_t cause, uintptr_t epc, uintptr_t sr)
 {
-  cputchar('H');
-  cputchar('F');
-  cputchar(' ');
-  printhex(addr);
+#if 0
+  cputstring("\nFault@ 0x");
+  printhex(addr, 8);
+  cputstring(" epc 0x");
+  printhex(epc, 8);
+#endif
   assert(addr >= PGSIZE && addr < MAX_TEST_PAGES * PGSIZE);
   addr = addr/PGSIZE*PGSIZE;
 
@@ -157,17 +164,146 @@ void handle_fault(uintptr_t addr, uintptr_t cause)
   __builtin___clear_cache(0,0);
 }
 
+const char *regnam(int ix)
+{
+  switch(ix)
+    {
+    __zero: return "zero";
+    __ra: return "ra";
+    __sp: return "sp";
+    __gp: return "gp";
+    __tp: return "tp";
+    __t0: return "t0";
+    __t1: return "t1";
+    __t2: return "t2";
+    __fp: return "fp";
+    __s1: return "s1";
+    __a0: return "a0";
+    __a1: return "a1";
+    __a2: return "a2";
+    __a3: return "a3";
+    __a4: return "a4";
+    __a5: return "a5";
+    __a6: return "a6";
+    __a7: return "a7";
+    __s2: return "s2";
+    __s3: return "s3";
+    __s4: return "s4";
+    __s5: return "s5";
+    __s6: return "s6";
+    __s7: return "s7";
+    __s8: return "s8";
+    __s9: return "s9";
+    __s10: return "s10";
+    __s11: return "s11";
+    __t3: return "t3";
+    __t4: return "t4";
+    __t5: return "t5";
+    __t6: return "t6";
+    default: return "??";
+    }
+}
+
 void handle_trap(trapframe_t* tf)
 {
   if (tf->cause == CAUSE_USER_ECALL)
-  {
-    int n = tf->gpr[10];
-
-    for (long i = 1; i < MAX_TEST_PAGES; i++)
-      evict(i*PGSIZE);
-
-    terminate(n);
-  }
+    {
+      int i, sel = tf->gpr[__a7];
+#if 0
+      cputstring("\nSyscall ");
+      printdec(sel);
+      cputstring("\n");
+#endif
+#if 0
+      for (i = 0; i < 32; i++)
+        {
+          if (i < 10) cputchar(' ');
+          printdec(i);
+          cputstring(regnam(i));
+          cputstring(": 0x");
+          printhex(tf->gpr[i], 8);
+          cputstring(i&1 ? "\n" : " ");
+        }
+      cputstring("epc 0x");
+      printhex(tf->epc, 8);
+#endif
+      switch(sel)
+        {
+        case 93: /* _exit */
+          {
+            int n = tf->gpr[10];
+            
+            for (long i = 1; i < MAX_TEST_PAGES; i++)
+              evict(i*PGSIZE);
+            
+            terminate(n);
+            break;
+          }
+        case 64: /* write */
+          {
+            /* get access to user pages from supervisor mode */
+            uintptr_t sstatus = set_csr(sstatus, SSTATUS_SUM);
+            long fd = tf->gpr[__a0];
+            char *buf = (char *)(tf->gpr[__a1]);
+            long siz = tf->gpr[__a2];
+#if 0
+            cputstring("\nwrite(");
+            printdec(fd);
+            cputstring(", ");
+            printhex((uint64_t)buf, 8);
+            cputstring(", ");
+            printdec(siz);
+            cputstring(");\n");
+#endif
+            while (siz--)
+              {
+                cputchar(*buf++);
+              }
+            write_csr(sstatus, sstatus);
+#if 0
+            asm("ebreak");
+#endif
+            break;
+          }
+        case 214: /* brk */
+          {
+            long newbrk = tf->gpr[__a0];
+            newbrk = ((newbrk-1)|7)+1;
+#if 0
+            cputstring("\nbrk(");
+            printdec(newbrk);
+            cputstring(");\n");
+            cputstring("oldbrk=");
+            printdec(__brk);
+            cputstring("\n");
+#endif
+            tf->gpr[__a0] = __brk;
+            
+            if (__brk < newbrk)
+              {
+                if (newbrk < MAX_TEST_PAGES * PGSIZE)
+                  __brk = newbrk;
+                else
+                  tf->gpr[__a0] = -1;
+              }
+#if 0
+            cputstring("retval=");
+            printdec(tf->gpr[__a0]);
+            cputstring("\n");
+            asm("ebreak");
+#endif
+            break;
+          }
+        default:
+          cputstring("\nInvalid syscall ");
+          printdec(sel);
+          cputstring("\n");
+          tf->gpr[__a0] = -1;
+          asm("ebreak");
+          break;
+        }
+      tf->epc += 4;
+    }
   else if (tf->cause == CAUSE_ILLEGAL_INSTRUCTION)
   {
     assert(tf->epc % 4 == 0);
@@ -182,7 +318,7 @@ void handle_trap(trapframe_t* tf)
     tf->epc += 4;
   }
   else if (tf->cause == CAUSE_FETCH_PAGE_FAULT || tf->cause == CAUSE_LOAD_PAGE_FAULT || tf->cause == CAUSE_STORE_PAGE_FAULT)
-    handle_fault(tf->badvaddr, tf->cause);
+    handle_fault(tf->badvaddr, tf->cause, tf->epc, tf->sr);
   else
     assert(!"unexpected exception");
 
@@ -209,7 +345,8 @@ void vm_boot(uintptr_t test_addr)
 {
   unsigned int random = ENTROPY;
   long delay = 0;
-
+  __brk = userstop - userstart + test_addr - DRAM_BASE;
+  __brk = ((__brk-1)|7)+1;
   hid_init();
   cputstring("vm_boot called\n");
   
@@ -252,7 +389,7 @@ void vm_boot(uintptr_t test_addr)
   write_csr(stvec, pa2kva(trap_entry));
   write_csr(sscratch, pa2kva(read_csr(mscratch)));
   write_csr(medeleg,
-            //    (1 << CAUSE_USER_ECALL) |
+    (1 << CAUSE_USER_ECALL) |
     (1 << CAUSE_FETCH_PAGE_FAULT) |
     (1 << CAUSE_LOAD_PAGE_FAULT) |
     (1 << CAUSE_STORE_PAGE_FAULT));
@@ -274,7 +411,8 @@ void vm_boot(uintptr_t test_addr)
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
   tf.epc = test_addr - DRAM_BASE;
-
+  tf.gpr[2] = MAX_TEST_PAGES * PGSIZE;
+  
   cputstring("ready to pop trap frame\n");
   
   pop_tf(&tf);

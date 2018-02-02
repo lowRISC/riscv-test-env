@@ -44,7 +44,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include "mini-printf.h"
-#include "hid.h"
 
 static unsigned int
 mini_strlen(const char *s)
@@ -207,6 +206,5 @@ int mini_printf (const char *fmt, ...)
   va_start(va, fmt);
   rslt = mini_vsnprintf(buffer, sizeof(buffer), fmt, va);
   va_end(va);
-  hid_send_string(buffer);
-  return rslt;
+  return write(1, buffer, rslt);
 }
