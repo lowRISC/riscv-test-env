@@ -12,11 +12,16 @@ static int addr_int = scroll_start;
 
 void hid_console_putchar(unsigned char ch)
 {
+  int lmt;
   switch(ch)
     {
     case 8: case 127: if (addr_int & 127) hid_base_ptr[HID_VGA+(--addr_int)] = ' '; break;
     case 13: addr_int = addr_int & -128; break;
-    case 10: addr_int = (addr_int|127)+1; break;
+    case 10:
+      {
+        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_base_ptr[HID_VGA+(addr_int++)] = ' ';
+        break;
+      }
     default: hid_base_ptr[HID_VGA+addr_int++] = ch;
     }
   if (addr_int >= 4096-128)

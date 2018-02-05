@@ -383,8 +383,6 @@ void vm_boot(uintptr_t test_addr)
                 "csrw mtvec, t0"
                 : : "r" (pmpc), "r" (-1UL) : "t0");
 
-  cputstring("pmps set up\n");
-  
   // set up supervisor trap handling
   write_csr(stvec, pa2kva(trap_entry));
   write_csr(sscratch, pa2kva(read_csr(mscratch)));
@@ -410,10 +408,8 @@ void vm_boot(uintptr_t test_addr)
 
   trapframe_t tf;
   memset(&tf, 0, sizeof(tf));
-  tf.epc = test_addr - DRAM_BASE;
-  tf.gpr[2] = MAX_TEST_PAGES * PGSIZE;
-  
-  cputstring("ready to pop trap frame\n");
+  tf.epc = test_addr - DRAM_BASE; // Initial PC
+  tf.gpr[2] = MAX_TEST_PAGES * PGSIZE; // Initial stack pointer
   
   pop_tf(&tf);
 }
