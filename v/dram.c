@@ -642,7 +642,8 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
 
 int main()
 {
-  enum {range=131072};
+  //  enum {range=131072};
+    enum {range=16};
   void volatile *start;
   printf("\nBare metal DRAM test\n");
   printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
