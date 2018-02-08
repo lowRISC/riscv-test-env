@@ -12,8 +12,7 @@ PHDRS
 SECTIONS
 {
   . = 0x80000000;
-  .text.init : { *(.text.init) } :text
-  .text : { *(.text) } :text
+  .text : { *(.text.init) *(.text) } :text
   .rodata : { *(.rodata*) } :text
   . = ALIGN(0x1000);
   .data : { *(.data) *(.sdata) *(.sbss) } :data

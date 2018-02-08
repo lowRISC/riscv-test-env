@@ -1,4 +1,4 @@
-O =  vm.c hid.c # mini-printf.c
+O =  vm.c hid.c memset.S # mini-printf.c
 D = syscalls.c dram.c mini-printf.c random.c
 
 vm: entry.S $O link.ld dram
