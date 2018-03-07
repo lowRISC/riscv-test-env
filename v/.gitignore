@@ -11,3 +11,7 @@ check
 dram
 dram.bin
 dram.dis
+dummy
+dummy.bin
+dummy.dis
+cnvmem64.hex

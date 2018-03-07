@@ -4,6 +4,7 @@ module cnvmem;
 
    reg [7:0] mem[32'h00000000:32'h00100000];
    reg [127:0] mem2[0:'hfff];
+   reg [63:0] mem3[0:'h1fff];
 
    initial
      begin
@@ -28,10 +29,19 @@ module cnvmem;
                                    mem[i+11],mem[i+10],mem[i+9],mem[i+8],
                                    mem[i+7],mem[i+6],mem[i+5],mem[i+4],
                                    mem[i+3],mem[i+2],mem[i+1],mem[i+0]};
+          end      
+        for (i = first; i < last; i=i+8)
+          begin
+             mem3[(i/8)&'h1FFF] = {mem[i+7],mem[i+6],mem[i+5],mem[i+4],
+                                   mem[i+3],mem[i+2],mem[i+1],mem[i+0]};
           end
         fd = $fopen("cnvmem.hex", "w");
         for (i = 0; i <= 'hfff; i=i+1)
           $fdisplay(fd, "%32x", mem2[i]);
+        $fclose(fd);
+        fd = $fopen("cnvmem64.hex", "w");
+        for (i = 0; i <= 'h1fff; i=i+1)
+          $fdisplay(fd, "%16x", mem3[i]);
         $fclose(fd);
         fd = $fopen("cnvmem.coe", "w");
         $fdisplay(fd, "memory_initialization_radix=16;");

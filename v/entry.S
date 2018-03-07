@@ -10,8 +10,6 @@
 # define REGBYTES 4
 #endif
 
-#define STACK_TOP (_end + 4096)
-
   .section ".text.init","ax",@progbits
   .globl _start
 _start:
@@ -35,6 +33,7 @@ _start:
         addi t1, t1, 8
         addi t2, t2, -8
         bgtz t2, 2b
+        fence.i
         ret
 
   /* NMI vector */
@@ -136,7 +135,7 @@ trap_vector:
 handle_reset:
   la t0, trap_vector
   csrw mtvec, t0
-  la sp, STACK_TOP - SIZEOF_TRAPFRAME_T
+  li sp, (0x40010000 - SIZEOF_TRAPFRAME_T)
   # Clear BSS segment
   la a4, _bss_start
   la a5, _bss_end
