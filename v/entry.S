@@ -12,16 +12,16 @@
 
   .section ".text.init","ax",@progbits
   .globl _start
-_start:
+_start: nop
+        # Let's just wait a bit in case we want to debug this bit
+        li t2, 20 # 10000000
+1:      addi t2, t2, -1
+        bnez t2, 1b
   RVTEST_RV64M
         auipc t0, 0
         li t1, DRAM_BASE
         sub t2, t0, t1
         beqz t2, handle_reset
-        # Let's just wait a bit in case we want to debug this bit
-        li t2, 10 # 10000000
-1:      addi t2, t2, -1
-        bnez t2, 1b
         # Relocate to correct place in DRAM
         mv ra, t1
         la t2, _bss_start
