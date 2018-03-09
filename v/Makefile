@@ -25,3 +25,11 @@ check: $D
 dummy: dummy.S $Z dummy.ld
 	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib dummy.S -g -O $Z -lc -T dummy.ld -mcmodel=medany -o $@
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+
+hello: hello.S $Z hello.ld
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib hello.S -g -O $Z -lc -T hello.ld -mcmodel=medany -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+
+addone: addone.S $Z addone.ld
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib addone.S -g -O $Z -lc -T addone.ld -mcmodel=medany -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
