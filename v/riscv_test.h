@@ -15,7 +15,6 @@
 #undef RVTEST_CODE_BEGIN
 #define RVTEST_CODE_BEGIN                                               \
         .text;                                                          \
-        .align  13;                                                     \
         .global userstart;                                              \
 userstart:                                                              \
         init
@@ -34,9 +33,6 @@ userstart:                                                              \
 // Data Section Macro
 //-----------------------------------------------------------------------
 
-#undef RVTEST_DATA_BEGIN
-#define RVTEST_DATA_BEGIN
-
 #undef RVTEST_DATA_END
 #define RVTEST_DATA_END
 
@@ -50,11 +46,7 @@ userstart:                                                              \
 #define PGSHIFT 12
 #define PGSIZE (1UL << PGSHIFT)
 
-#ifdef __riscv64
-# define SIZEOF_TRAPFRAME_T 288
-#else
-# define SIZEOF_TRAPFRAME_T 144
-#endif
+#define SIZEOF_TRAPFRAME_T ((__riscv_xlen / 8) * 36)
 
 #ifndef __ASSEMBLER__
 
@@ -65,6 +57,15 @@ typedef unsigned long pte_t;
 #define VA_BITS (VPN_BITS + PGSHIFT)
 #define PTES_PER_PT (1UL << RISCV_PGLEVEL_BITS)
 #define MEGAPAGE_SIZE (PTES_PER_PT * PGSIZE)
+
+enum {__zero, __ra, __sp, __gp,
+      __tp, __t0, __t1, __t2,
+      __fp, __s1, __a0, __a1,
+      __a2, __a3, __a4, __a5,
+      __a6, __a7, __s2, __s3,
+      __s4, __s5, __s6, __s7,
+      __s8, __s9, __s10, __s11,
+      __t3, __t4, __t5, __t6};
 
 typedef struct
 {

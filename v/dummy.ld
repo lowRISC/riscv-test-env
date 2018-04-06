@@ -1,7 +1,5 @@
 OUTPUT_ARCH( "riscv" )
-/*
 ENTRY(_start)
-*/
 
 PHDRS
 {
@@ -13,7 +11,7 @@ PHDRS
 
 SECTIONS
 {
-  . = 0x80000000;
+  . = 0x40000000;
   .text : AT ( 0x40000000) { *(.text.init) *(.text) } :text
   .rodata : { *(.rodata*) } :text
   . = ALIGN(0x1000);

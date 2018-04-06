@@ -1,6 +1,6 @@
 #include "riscv_test.h"
 
-#ifdef __riscv64
+#if __riscv_xlen == 64
 # define STORE    sd
 # define LOAD     ld
 # define REGBYTES 8
@@ -9,30 +9,160 @@
 # define LOAD     lw
 # define REGBYTES 4
 #endif
-
-#define STACK_TOP (_end + 4096)
+        
+#define CSR_ICACHE 0x700
+#define CSR_DCACHE 0x701
 
   .section ".text.init","ax",@progbits
-
-reset_vector:
-  j handle_reset
+  .globl _start
+_start: jal t0,1f
+trap:   j trap
+        # Let's just wait a bit in case we want to debug this bit
+1:      csrw mtvec, t0
+        addi t0,t0,-4
+        li t2, 20 # 10000000
+2:      addi t2, t2, -1
+        bnez t2, 2b
+        RVTEST_RV64M
+# Optionally disable icache        
+#        csrw CSR_ICACHE, zero
+        li ra, DRAM_BASE
+        sub t2, t0, ra
+        beqz t2, handle_reset
+        # Relocate to correct place in DRAM
+        la t2, _bss_start
+        sub t2, t2, t0
+        add a0, t0, zero
+        add a1, ra, zero
+3:
+        LOAD s0, 0(a0)
+        STORE s0, 0(a1)
+        LOAD s0, 8(a0)
+        STORE s0, 8(a1)
+        LOAD s0, 16(a0)
+        STORE s0, 16(a1)
+        LOAD s0, 24(a0)
+        STORE s0, 24(a1)
+        addi a0, a0, 32
+        addi a1, a1, 32
+        addi t2, t2, -32
+        bgtz t2, 3b
+        fence.i
+        ret
 
   /* NMI vector */
 nmi_vector:
-  j wtf
+  STORE x1, 1*REGBYTES(sp)
+  STORE x2, 2*REGBYTES(sp)
+  STORE x3, 3*REGBYTES(sp)
+  STORE x4, 4*REGBYTES(sp)
+  STORE x5, 5*REGBYTES(sp)
+  STORE x6, 6*REGBYTES(sp)
+  STORE x7, 7*REGBYTES(sp)
+  STORE x8, 8*REGBYTES(sp)
+  STORE x9, 9*REGBYTES(sp)
+  STORE x10, 10*REGBYTES(sp)
+  STORE x11, 11*REGBYTES(sp)
+  STORE x12, 12*REGBYTES(sp)
+  STORE x13, 13*REGBYTES(sp)
+  STORE x14, 14*REGBYTES(sp)
+  STORE x15, 15*REGBYTES(sp)
+  STORE x16, 16*REGBYTES(sp)
+  STORE x17, 17*REGBYTES(sp)
+  STORE x18, 18*REGBYTES(sp)
+  STORE x19, 19*REGBYTES(sp)
+  STORE x20, 20*REGBYTES(sp)
+  STORE x21, 21*REGBYTES(sp)
+  STORE x22, 22*REGBYTES(sp)
+  STORE x23, 23*REGBYTES(sp)
+  STORE x24, 24*REGBYTES(sp)
+  STORE x25, 25*REGBYTES(sp)
+  STORE x26, 26*REGBYTES(sp)
+  STORE x27, 27*REGBYTES(sp)
+  STORE x28, 28*REGBYTES(sp)
+  STORE x29, 29*REGBYTES(sp)
+  STORE x30, 30*REGBYTES(sp)
+  STORE x31, 31*REGBYTES(sp)
 
+  csrr a0, mcause
+  csrr a1, mepc
+  mv a2, sp
+  bgez a0, 1f
+  jal handle_interrupt
+  j 2f      
+1:
+  jal handle_trap
+  csrw mepc, a0
+2:
+
+  LOAD x1, 1*REGBYTES(sp)
+  LOAD x2, 2*REGBYTES(sp)
+  LOAD x3, 3*REGBYTES(sp)
+  LOAD x4, 4*REGBYTES(sp)
+  LOAD x5, 5*REGBYTES(sp)
+  LOAD x6, 6*REGBYTES(sp)
+  LOAD x7, 7*REGBYTES(sp)
+  LOAD x8, 8*REGBYTES(sp)
+  LOAD x9, 9*REGBYTES(sp)
+  LOAD x10, 10*REGBYTES(sp)
+  LOAD x11, 11*REGBYTES(sp)
+  LOAD x12, 12*REGBYTES(sp)
+  LOAD x13, 13*REGBYTES(sp)
+  LOAD x14, 14*REGBYTES(sp)
+  LOAD x15, 15*REGBYTES(sp)
+  LOAD x16, 16*REGBYTES(sp)
+  LOAD x17, 17*REGBYTES(sp)
+  LOAD x18, 18*REGBYTES(sp)
+  LOAD x19, 19*REGBYTES(sp)
+  LOAD x20, 20*REGBYTES(sp)
+  LOAD x21, 21*REGBYTES(sp)
+  LOAD x22, 22*REGBYTES(sp)
+  LOAD x23, 23*REGBYTES(sp)
+  LOAD x24, 24*REGBYTES(sp)
+  LOAD x25, 25*REGBYTES(sp)
+  LOAD x26, 26*REGBYTES(sp)
+  LOAD x27, 27*REGBYTES(sp)
+  LOAD x28, 28*REGBYTES(sp)
+  LOAD x29, 29*REGBYTES(sp)
+  LOAD x30, 30*REGBYTES(sp)
+  LOAD x31, 31*REGBYTES(sp)
+
+  addi sp, sp, 272
+  mret
+
+  .globl trap_vector        
 trap_vector:
-  j wtf
+        csrrw sp, mscratch, sp
+        STORE a0, 10*REGBYTES(sp)
+        STORE a1, 11*REGBYTES(sp)
+        csrr a1, mepc
+        addi a0, a1, 4
+        csrw mepc, a0
+        csrr a0, mcause
+1:      ebreak
+        j 1b
+        csrw mscratch, sp
+        LOAD a0, 10*REGBYTES(sp)
+        LOAD a1, 11*REGBYTES(sp)
+        mret
 
 handle_reset:
   la t0, trap_vector
   csrw mtvec, t0
-  la sp, STACK_TOP - SIZEOF_TRAPFRAME_T
+  li sp, (0x80080000 - SIZEOF_TRAPFRAME_T)
+  # Clear BSS segment
+  la a4, _bss_start
+  la a5, _bss_end
+  sub a5, a5, a4      
+2:      
+  STORE zero, 0(a4)
+  addi a4, a4, 8
+  addi a5, a5, -8
+  bgtz a5, 2b
   csrr t0, mhartid
   slli t0, t0, 12
   add sp, sp, t0
   csrw mscratch, sp
-  li a1, 1337
   la a0, userstart
   j vm_boot
 
@@ -74,6 +204,7 @@ pop_tf:
   sret
 
   .global  trap_entry
+  .align 4
 trap_entry:
   csrrw sp, sscratch, sp
 
@@ -123,4 +254,10 @@ trap_entry:
   STORE  t0,35*REGBYTES(sp)
 
   move  a0, sp
-  j handle_trap
+        j handle_trap
+#if 1
+        .data
+cursor: 
+        .word   0
+#endif
+        

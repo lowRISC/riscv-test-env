@@ -1,20 +1,17 @@
 OUTPUT_ARCH( "riscv" )
-/*
 ENTRY(_start)
-*/
 
 PHDRS
 {
-  headers PT_PHDR PHDRS ;
-  text PT_LOAD FILEHDR PHDRS ;
+  text PT_LOAD ;
   data PT_LOAD ;
-  dynamic PT_DYNAMIC ;
 }
 
 SECTIONS
 {
-  . = 0x80000000;
-  .text : AT ( 0x40000000) { *(.text.init) *(.text) } :text
+  . = 0x00002000;
+  .text.init : { *(.text.init) } :text
+  .text : { *(.text) } :text
   .rodata : { *(.rodata*) } :text
   . = ALIGN(0x1000);
   .data : { *(.data) *(.sdata) *(.sbss) } :data
@@ -24,4 +21,3 @@ SECTIONS
   _bss_end = .;
   _end = .;
 }
-
