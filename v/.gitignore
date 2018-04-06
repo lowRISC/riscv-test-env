@@ -19,3 +19,7 @@ addone.dis
 hello
 hello.dis
 cnvmem64.hex
+bare
+bare.bin
+bare.dis
+vm.hex
