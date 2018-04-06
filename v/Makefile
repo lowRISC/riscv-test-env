@@ -4,6 +4,8 @@ D = syscalls.c dram.c mini-printf.c random.c
 B = bare.c dram.c mini-printf.c random.c hid.c
 Z = # mydummy.c hid.c mini-printf.c
 
+all: vm addone bare dram check dummy hello
+
 vm: entry.S $O link.ld dram
 	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib entry.S -g -O $O -lc usercode.S -T link.ld -DENTROPY=0xf7930f7 -mcmodel=medany -o $@
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
