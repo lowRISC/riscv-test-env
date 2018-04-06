@@ -14,4 +14,8 @@ dram.dis
 dummy
 dummy.bin
 dummy.dis
+addone
+addone.dis
+hello
+hello.dis
 cnvmem64.hex

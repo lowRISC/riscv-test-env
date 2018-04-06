@@ -1,5 +1,13 @@
+        .text
         .globl _start
-_start: li sp, 0x4000FF00
+_start: nop
+        nop
+        jal ra,0f
+trap:   csrr ra, mepc
+        csrr s0, mcause
+        j trap
+0:      csrw mtvec, ra
+        li sp, 0x4000FF00
         li a0, 0x41008000
         la a1, 3f
         li t1, 4
@@ -16,4 +24,6 @@ _start: li sp, 0x4000FF00
         bnez t1, 1b
 2:      sbreak
         j 1b
+        .data
+        .align 4
 3:      .asciz "Hello, Ariane!"

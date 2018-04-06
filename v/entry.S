@@ -9,30 +9,44 @@
 # define LOAD     lw
 # define REGBYTES 4
 #endif
+        
+#define CSR_ICACHE 0x700
+#define CSR_DCACHE 0x701
 
   .section ".text.init","ax",@progbits
   .globl _start
-_start: nop
+_start: jal t0,1f
+trap:   j trap
         # Let's just wait a bit in case we want to debug this bit
+1:      csrw mtvec, t0
+        addi t0,t0,-4
         li t2, 20 # 10000000
-1:      addi t2, t2, -1
-        bnez t2, 1b
-  RVTEST_RV64M
-        auipc t0, 0
-        li t1, DRAM_BASE
-        sub t2, t0, t1
+2:      addi t2, t2, -1
+        bnez t2, 2b
+        RVTEST_RV64M
+# Optionally disable icache        
+#        csrw CSR_ICACHE, zero
+        li ra, DRAM_BASE
+        sub t2, t0, ra
         beqz t2, handle_reset
         # Relocate to correct place in DRAM
-        mv ra, t1
         la t2, _bss_start
         sub t2, t2, t0
-2:
-        LOAD s0, 0(t0)
-        STORE s0, 0(t1)
-        addi t0, t0, 8
-        addi t1, t1, 8
-        addi t2, t2, -8
-        bgtz t2, 2b
+        add a0, t0, zero
+        add a1, ra, zero
+3:
+        LOAD s0, 0(a0)
+        STORE s0, 0(a1)
+        LOAD s0, 8(a0)
+        STORE s0, 8(a1)
+        LOAD s0, 16(a0)
+        STORE s0, 16(a1)
+        LOAD s0, 24(a0)
+        STORE s0, 24(a1)
+        addi a0, a0, 32
+        addi a1, a1, 32
+        addi t2, t2, -32
+        bgtz t2, 3b
         fence.i
         ret
 
@@ -135,7 +149,7 @@ trap_vector:
 handle_reset:
   la t0, trap_vector
   csrw mtvec, t0
-  li sp, (0x40010000 - SIZEOF_TRAPFRAME_T)
+  li sp, (0x80080000 - SIZEOF_TRAPFRAME_T)
   # Clear BSS segment
   la a4, _bss_start
   la a5, _bss_end
