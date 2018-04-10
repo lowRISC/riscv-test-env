@@ -10,7 +10,7 @@ trap:   csrr ra, mepc
         li sp, 0x4000FF00
         li a0, 0x41008000
         la a1, 3f
-        li t1, 1
+        li t1, 4
 1:      ld t0, 0(a1)
         sd t0, 0(a0)
         ld t0, 8(a1)
@@ -19,11 +19,11 @@ trap:   csrr ra, mepc
         sd t0, 16(a0)
         ld t0, 24(a1)
         sd t0, 24(a0)
-        ld t0, 32(a1)
-        sd t0, 32(a0)
         addi a0,a0,32
-        jal ra, main
-exit:   j exit
+        addi t1, t1, -1
+        bnez t1, 1b
+2:      sbreak
+        j 1b
         .data
         .align 4
-3:      .asciz "Hello, Ariane!                            "
+3:      .asciz "Goodbye Rocket"

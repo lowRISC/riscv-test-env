@@ -6,7 +6,7 @@
 //enum {scroll_start=4096-256};
 enum {scroll_start=0};
 volatile uint32_t *const sd_base = (uint32_t *)0x41010000;
-volatile uint32_t *const hid_base_ptr = (uint32_t *)0x41000000;
+volatile uint8_t *const hid_vga_ptr = (uint8_t *)0x41008000;
 const size_t err = 0x3000, eth = 0x41020000, ddr = 0x80000000, rom = 0x10000, bram = 0x40000000, intc = 0xc000000, clin = 0, hid = 0x41000000;
 static int addr_int = scroll_start;
 
@@ -15,23 +15,23 @@ void hid_console_putchar(unsigned char ch)
   int lmt;
   switch(ch)
     {
-    case 8: case 127: if (addr_int & 127) hid_base_ptr[HID_VGA+(--addr_int)] = ' '; break;
+    case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = ' '; break;
     case 13: addr_int = addr_int & -128; break;
     case 10:
       {
-        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_base_ptr[HID_VGA+(addr_int++)] = ' ';
+        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = ' ';
         break;
       }
-    default: hid_base_ptr[HID_VGA+addr_int++] = ch;
+    default: hid_vga_ptr[addr_int++] = ch;
     }
   if (addr_int >= 4096-128)
     {
       // this is where we scroll
       for (addr_int = 0; addr_int < 4096; addr_int++)
         if (addr_int < 4096-128)
-          hid_base_ptr[HID_VGA+addr_int] = hid_base_ptr[HID_VGA+addr_int+128];
+          hid_vga_ptr[addr_int] = hid_vga_ptr[addr_int+128];
         else
-          hid_base_ptr[HID_VGA+addr_int] = ' ';
+          hid_vga_ptr[addr_int] = ' ';
       addr_int = 4096-256;
     }
 }
