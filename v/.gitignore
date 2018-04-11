@@ -8,6 +8,10 @@ vm
 *.i
 *.s
 *.o
+bare
+bare2
+barec
+blank
 check
 dram
 dummy

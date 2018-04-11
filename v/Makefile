@@ -2,6 +2,7 @@ export RISCV=/local/scratch/jrrk2/lowrisc-chip-rocket-customisation/riscv
 O =  vm.c hid.c memset.S # mini-printf.c
 D = syscalls.c dram.c mini-printf.c random.c
 B = bare.c dram.c mini-printf.c random.c hid.c
+B2 = bare2.c dram2.c mini-printf.c random.c hid.c
 Z = # mydummy.c hid.c mini-printf.c
 
 all: vm addone bare dram check dummy hello goodbye
@@ -42,12 +43,28 @@ goodbye: goodbye.S $Z goodbye.ld
 	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib goodbye.S -g -O $Z -lc -T $@.ld -mcmodel=medany -o $@
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
 
+blank: blank.S $Z blank.ld
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib blank.S -g -O $Z -lc -T $@.ld -mcmodel=medany -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+
 addone: addone.S $Z addone.ld
 	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -nostdlib addone.S -g -O $Z -lc -T $@.ld -mcmodel=medany -o $@
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
 
 bare: $B
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+
+barec: $B
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64gc -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+
+bare2: $(B2)
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt.S -static -g -Os $(B2) -o $@
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
