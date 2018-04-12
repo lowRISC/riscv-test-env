@@ -64,7 +64,7 @@ barec: $B
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
 
 bare2: $(B2)
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt.S -static -g -Os $(B2) -o $@
+	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt2.S -static -g -Os $(B2) -o $@
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
 	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@

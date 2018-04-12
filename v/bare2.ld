@@ -20,6 +20,6 @@ SECTIONS
   .bss : { *(.bss) }
   _bss_end = .;
   _end = .;
-  . = ALIGN(0x1000);
+  . = 0x80000000;
   _sbrk = .;
 }

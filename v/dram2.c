@@ -91,8 +91,7 @@ int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
                 printf( 
                         "FAILURE: 0x%x != 0x%x at offset 0x%x.\n", 
                         (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)));
-            printf("Abandoning test...");
-            _exit(1);
+            /* printf("Skipping to next test..."); */
             r = -1;
         }
     }
@@ -643,18 +642,19 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
 
 int main()
 {
-  //  enum {range=0x8000000};
-  //  enum {range=131072};
-  //  enum {range=8192};
-  //    enum {range=16384};
-  enum {range=32768};
+  //  enum {range=16384};
+  //  enum {range=262144};
+  //  enum {range=1048576};
+  //  enum {range=4194304};
+  //  enum {range=8388608};
+  enum {range=16777216};
   void volatile *start;
   printf("\nBare metal DRAM test\n");
   printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
   printf("Copyright (C) 2001-2012 Charles Cazabon.\n");
   printf("Licensed under the GNU General Public License version 2 (only).\n");
   printf("\n");
-  start = sbrk(range);
+  start = sbrk(range);  
   testrange(start, range, 1, 1);
 }
 
