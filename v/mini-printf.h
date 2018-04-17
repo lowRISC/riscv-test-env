@@ -53,8 +53,10 @@ int main(void);
 }
 #endif
 
+#if 0
 #define vsnprintf mini_vsnprintf
 #define snprintf mini_snprintf
 #define sprintf mini_sprintf
 #define printf mini_printf
+#endif
 #endif

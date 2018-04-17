@@ -647,7 +647,10 @@ int main()
   //  enum {range=1048576};
   //  enum {range=4194304};
   //  enum {range=8388608};
-  enum {range=16777216};
+  //  enum {range=16777216};
+  //  enum {range=33554432};
+  //  enum {range=67108864};
+  enum {range=134217728};
   void volatile *start;
   printf("\nBare metal DRAM test\n");
   printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);

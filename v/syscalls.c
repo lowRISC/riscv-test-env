@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <string.h>
 #include <sys/syscall.h>
 #include "mini-printf.h"
 
@@ -52,6 +53,18 @@ void *sbrk(intptr_t siz)
 ssize_t write(int fd, const void *buf, size_t count)
 {
   return syscall(SYS_write, fd, (long)buf, count, 0, 0, 0, 0);
+}
+
+int putchar(int ch)
+{
+  write(1, &ch, 1);
+  return ch;
+}
+
+int puts(const char *s)
+{
+  write(1, s, strlen(s));
+  putchar('\n');
 }
 
 void _exit(int code)

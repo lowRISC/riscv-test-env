@@ -15,6 +15,7 @@
 #define __version__ "4.3.0"
 
 #include <limits.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -89,7 +90,7 @@ int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
     for (i = 0; i < count; i++, p1++, p2++) {
         if (*p1 != *p2) {
                 printf( 
-                        "FAILURE: 0x%x != 0x%x at offset 0x%x.\n", 
+                        "FAILURE: 0x%lx != 0x%lx at offset 0x%lx.\n", 
                         (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)));
             /* printf("Skipping to next test..."); */
             r = -1;
@@ -123,7 +124,7 @@ int test_stuck_address(ulv *bufa, size_t count) {
             if (*p1 != (((j + i) % 2) == 0 ? (ul) p1 : ~((ul) p1))) {
                     printf( 
                             "FAILURE: possible bad address line at offset "
-                            "0x%x.\n", 
+                            "0x%lx.\n", 
                             (ul) (i * sizeof(ul)));
                 printf("Skipping to next test...\n");
                 
@@ -602,7 +603,7 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     size_t maxbytes = -1; /* addressable memory, in bytes */
     size_t maxmb = (maxbytes >> 20) + 1; /* addressable memory, in MB */
     int device_specified = 0;
-    printf("test range is 0x%x to 0x%x\n", aligned, aligned+bufsize-1);
+    printf("test range is 0x%p to 0x%p\n", aligned, aligned+bufsize-1);
     
     halflen = bufsize / 2;
     count = halflen / sizeof(ul);
@@ -610,9 +611,9 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     bufb = (ulv *) ((size_t) aligned + halflen);
 
     for(loop=1; loop <= loops; loop++) {
-        printf("Loop %u", loop);
+        printf("Loop %lu", loop);
         if (loops) {
-            printf("/%u", loops);
+            printf("/%lu", loops);
         }
         printf(":\n");
         printf("  %s: ", "Stuck Address");

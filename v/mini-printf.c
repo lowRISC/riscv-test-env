@@ -43,6 +43,7 @@
 
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include "mini-printf.h"
 
 static unsigned int
@@ -50,50 +51,6 @@ mini_strlen(const char *s)
 {
 	unsigned int len = 0;
 	while (s[len] != '\0') len++;
-	return len;
-}
-
-static unsigned int
-mini_itoa(int value, unsigned int radix, unsigned int uppercase, unsigned int unsig,
-	 char *buffer, unsigned int zero_pad)
-{
-	char	*pbuffer = buffer;
-	int	negative = 0;
-	unsigned int	i, len;
-
-	/* No support for unusual radixes. */
-	if (radix > 16)
-		return 0;
-
-	if (value < 0 && !unsig) {
-		negative = 1;
-		value = -value;
-	}
-
-	/* This builds the string back to front ... */
-	do {
-		int digit = value % radix;
-		*(pbuffer++) = (digit < 10 ? '0' + digit : (uppercase ? 'A' : 'a') + digit - 10);
-		value /= radix;
-	} while (value > 0);
-
-	for (i = (pbuffer - buffer); i < zero_pad; i++)
-		*(pbuffer++) = '0';
-
-	if (negative)
-		*(pbuffer++) = '-';
-
-	*(pbuffer) = '\0';
-
-	/* ... now we reverse it (could do it recursively but will
-	 * conserve the stack space) */
-	len = (pbuffer - buffer);
-	for (i = 0; i < len / 2; i++) {
-		char j = buffer[i];
-		buffer[i] = buffer[len-i-1];
-		buffer[len-i-1] = j;
-	}
-
 	return len;
 }
 
@@ -128,6 +85,49 @@ mini_vsnprintf(char *buffer, unsigned int buffer_len, const char *fmt, va_list v
 		return len;
 	}
 
+        unsigned int mini_ltoa(uint64_t value, unsigned int radix, unsigned int uppercase, unsigned int unsig,
+                 char *buffer, unsigned int zero_pad)
+        {
+                char	*pbuffer = buffer;
+                int	negative = 0;
+                unsigned int	i, len;
+
+                /* No support for unusual radixes. */
+                if (radix > 16)
+                        return 0;
+
+                if ((value>>63) && !unsig) {
+                        negative = 1;
+                        value = -value;
+                }
+
+                /* This builds the string back to front ... */
+                do {
+                  int digit = value % radix;
+                  *(pbuffer++) = (digit < 10 ? '0' + digit : (uppercase ? 'A' : 'a') + digit - 10);
+                  value /= radix;
+                } while (value > 0);
+
+                for (i = (pbuffer - buffer); i < zero_pad; i++)
+                        *(pbuffer++) = '0';
+
+                if (negative)
+                        *(pbuffer++) = '-';
+
+                *(pbuffer) = '\0';
+
+                /* ... now we reverse it (could do it recursively but will
+                 * conserve the stack space) */
+                len = (pbuffer - buffer);
+                for (i = 0; i < len / 2; i++) {
+                        char j = buffer[i];
+                        buffer[i] = buffer[len-i-1];
+                        buffer[len-i-1] = j;
+                }
+
+                return len;
+        }
+
 	while ((ch=*(fmt++))) {
 		if ((unsigned int)((pbuffer - buffer) + 1) >= buffer_len)
 			break;
@@ -154,15 +154,36 @@ mini_vsnprintf(char *buffer, unsigned int buffer_len, const char *fmt, va_list v
 				case 0:
 					goto end;
 
+                                case 'l':
+                                  switch(*fmt++)
+                                    {
+                                    case 'u':
+                                    case 'd':
+                                      len = mini_ltoa(va_arg(va, uint64_t), 10, 0, (ch=='u'), bf, zero_pad);
+                                      _puts(bf, len);
+                                      break;
+
+                                    case 'x':
+                                    case 'X':
+                                      len = mini_ltoa(va_arg(va, uint64_t), 16, (ch=='X'), 1, bf, zero_pad);
+                                      _puts(bf, len);
+                                      break;
+                                    }
+                                  break;
 				case 'u':
 				case 'd':
-					len = mini_itoa(va_arg(va, unsigned int), 10, 0, (ch=='u'), bf, zero_pad);
+					len = mini_ltoa(va_arg(va, unsigned int), 10, 0, (ch=='u'), bf, zero_pad);
+					_puts(bf, len);
+					break;
+
+				case 'p':
+					len = mini_ltoa(va_arg(va, size_t), 16, 1, 1, bf, zero_pad);
 					_puts(bf, len);
 					break;
 
 				case 'x':
 				case 'X':
-					len = mini_itoa(va_arg(va, unsigned int), 16, (ch=='X'), 1, bf, zero_pad);
+					len = mini_ltoa(va_arg(va, unsigned int), 16, (ch=='X'), 1, bf, zero_pad);
 					_puts(bf, len);
 					break;
 
@@ -199,6 +220,17 @@ mini_snprintf(char* buffer, unsigned int buffer_len, const char *fmt, ...)
 }
 
 int mini_printf (const char *fmt, ...)
+{
+  char buffer[99];
+  va_list va;
+  int rslt;
+  va_start(va, fmt);
+  rslt = mini_vsnprintf(buffer, sizeof(buffer), fmt, va);
+  va_end(va);
+  return write(1, buffer, rslt);
+}
+
+int printf (const char *fmt, ...)
 {
   char buffer[99];
   va_list va;

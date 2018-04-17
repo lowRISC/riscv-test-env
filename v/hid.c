@@ -36,6 +36,12 @@ void hid_console_putchar(unsigned char ch)
     }
 }
 
+int putchar(int ch)
+{
+  hid_console_putchar(ch);
+  return ch;
+}
+
 void hid_init(void)
 {
   if (addr_int != scroll_start)
@@ -125,6 +131,12 @@ void hid_init(void)
 
 void hid_send_string(const char *str) {
   while (*str) hid_console_putchar(*str++);
+}
+
+int puts(const char *s)
+{
+  hid_send_string(s);
+  hid_console_putchar('\n');
 }
 
 void handle_interrupt(long cause)
