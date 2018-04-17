@@ -99,7 +99,6 @@ vmtest: vm
 
 cnvmem: cnvmem.v
 	iverilog cnvmem.v -o cnvmem
-	./cnvmem
 
 recvRawEth: recvRawEth.c
 	gcc $< -o $@ -g -lssl -lcrypto
