@@ -5,7 +5,7 @@ O =  vm.c hid.c memset.S # mini-printf.c
 D = syscalls.c dram.c mini-printf.c random.c bare_metal_include/strlen.c
 B = bare.c dram.c mini-printf.c random.c hid.c
 B2 = bare2.c dram2.c mini-printf.c random.c hid.c
-E = eth.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c
+E = eth.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c
 Z = # mydummy.c hid.c mini-printf.c
 
 all: vm addone bare dram check dummy hello goodbye
@@ -19,10 +19,10 @@ vm: entry.S $O link.ld dram ./cnvmem
 	cp -p cnvmem64.hex $@.hex
 
 dram: $D
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T dram.ld -nostdlib -static -g -Os $D -o $@
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -T dram.ld -nostdlib -static -g -Os $D -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-elf-size $@
 
 check: $D
 	cc -g -Os $D -nostdlib -lc -o $@
@@ -54,28 +54,33 @@ addone: addone.S $Z addone.ld
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
 
 bare: $B
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-elf-size $@
 
 barec: $B
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64gc -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64gc -T $@.ld -nostdlib barecrt.S -static -g -Os $B -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-elf-size $@
 
 bare2: $(B2)
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -T $@.ld -nostdlib barecrt2.S -static -g -Os $(B2) -o $@
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -T $@.ld -nostdlib barecrt2.S -static -g -Os $(B2) -o $@
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-elf-size $@
 
 eth: $E
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-gcc -march=rv64g -I.. -Ibare_metal_include -T $@.ld -nostdlib barecrt2.S -static -g -Os $(E) -o $@ -lgcc
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objdump -d -D -z -S -l $@ > $@.dis
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-objcopy -I elf64-little -O binary $@ $@.bin
-	$(RISCV)/bin/riscv64-unknown-linux-gnu-size $@
+	$(RISCV)/bin/riscv64-unknown-elf-gcc -march=rv64g -I.. -Ibare_metal_include -T $@.ld -nostdlib barecrt2.S -static -g -Os $(E) -o $@ -lgcc
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I binary -O verilog $@.bin cnvmem.mem
+	$(RISCV)/bin/riscv64-unknown-elf-size $@
+	../../romgen/bigromtest cnvmem.mem $@.v
+	./cnvmem
+	mv cnvmem64.hex $@.hex
+	rm cnvmem.coe cnvmem.hex
 
 hellotest: hello
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
@@ -88,11 +93,11 @@ baretest2: bare2
 
 ethertest: eth ./recvRawEth bbl
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
-	./recvRawEth -r eth0 boot.bin
+	./recvRawEth eth0 boot.bin
 
-etherbad: eth ./recvRawEth bbl
+etherdummy: eth ./recvRawEth
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
-	./recvRawEth -r -m eth0 boot.bin
+	./recvRawEth eth0 dummy.bin
 
 vmtest: vm
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$< -o40000000
@@ -105,7 +110,17 @@ recvRawEth: recvRawEth.c
 	@echo This version of etherboot/ethersd requires super user powers ...
 	sudo setcap cap_net_raw+ep $@
 
-bbl: ../../riscv-pk/build/bbl
+bbl: ../../riscv-pk/build/bbl ./cnvmem
 	env PATH=/local/scratch/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/build
 	cp -p ../../riscv-pk/build/bbl boot.bin
+	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -S -l boot.bin > $@.dis
 	$(RISCV)/bin/riscv64-unknown-elf-strip boot.bin
+
+bbl.hex: bbl
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary boot.bin bbl.bin
+	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I binary -O verilog bbl.bin cnvmem.mem
+	./cnvmem
+	mv cnvmem64.hex $@
+
+program: /local/scratch/jrrk2/ariane/my_svf_target.svf
+	../../jtag_digilent_ariane/jtag_digilent_ariane $<

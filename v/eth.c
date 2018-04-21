@@ -195,10 +195,10 @@ uint32_t __bswap_32(uint32_t x)
 }
 #endif
 
-#   define ntohl(x)     __bswap_32 (x)
-#   define ntohs(x)     __bswap_16 (x)
-#   define htonl(x)     __bswap_32 (x)
-#   define htons(x)     __bswap_16 (x)
+#   define ntohl(x)     __bswap32 (x)
+#   define ntohs(x)     __bswap16 (x)
+#   define htonl(x)     __bswap32 (x)
+#   define htons(x)     __bswap16 (x)
 
 #define min(x,y) (x) < (y) ? (x) : (y)
 
@@ -251,12 +251,8 @@ static void lite_queue(void *buf, int length)
 // size of DDR RAM (128M for NEXYS4-DDR) 
 #define DDR_SIZE 0x8000000
 
-enum {sizeof_maskarray=MAX_FILE_SIZE/CHUNK_SIZE/8};
-
-static int oldidx;
 static uint16_t peer_port;
 static u_char peer_addr[6];
-static uint64_t maskarray[sizeof_maskarray/sizeof(uint64_t)];
 
 void external_interrupt(void)
 {
@@ -372,8 +368,6 @@ int main(void) {
   printf("Hello LowRISC! "__TIMESTAMP__"\n");
   rxbuf = (inqueue_t *)mysbrk(sizeof(inqueue_t)*queuelen);
   txbuf = (outqueue_t *)mysbrk(sizeof(outqueue_t)*queuelen);
-  //  maskarray = (uint64_t *)mysbrk(sizeof_maskarray);
-  memset(maskarray, 0, sizeof_maskarray);
   
   mac_addr.addr[0] = (uint8_t)0xEE;
   mac_addr.addr[1] = (uint8_t)0xE1;
@@ -650,7 +644,7 @@ volatile uint64_t * get_ddr_base() {
   return (uint64_t *)(0x80000000);
 }
 
-void boot(uint8_t *boot_file_buf, uint32_t fsize)
+void boot(uint8_t *boot_file_buf)
 {
   uint32_t br;
   uint8_t *memory_base = (uint8_t *)(get_ddr_base());
@@ -660,11 +654,10 @@ void boot(uint8_t *boot_file_buf, uint32_t fsize)
   eth_write(MACHI_OFFSET, eth_read(MACHI_OFFSET)&~MACHI_IRQ_EN);
   eth_write(RSR_OFFSET, 0);
   printf("Ethernet interrupt status = %d\n", eth_read(RSR_OFFSET));
-  printf("Load %d bytes to memory address %x from boot.bin of %d bytes.\n", fsize, boot_file_buf, fsize);
 
   // read elf
   printf("load elf to DDR memory\n");
-  if(br = load_elf(boot_file_buf, fsize))
+  if(br = load_elf(boot_file_buf))
     printf("elf read failed with code %0d", br);
 
   printf("Boot the loaded program...\n");
@@ -680,17 +673,16 @@ void boot(uint8_t *boot_file_buf, uint32_t fsize)
   asm volatile ("mret");
 }
 
-static uint8_t *digest = NULL;
-
 void process_udp_packet(const u_char *data, int ulen)
 {
   uint16_t idx;	
-  static uint16_t maxidx;
   uint64_t siz = ((uint64_t)0x7800000);
   uint8_t *boot_file_buf = (uint8_t *)(get_ddr_base()) + siz - MAX_FILE_SIZE;
   uint8_t *boot_file_buf_end = (uint8_t *)(get_ddr_base()) + siz;
   if (ulen == CHUNK_SIZE+sizeof(uint16_t))
     {
+      static uint16_t ostart, oend;
+      static uint8_t odigest[hash_length * 2 + 1];
       memcpy(&idx, data+CHUNK_SIZE, sizeof(uint16_t));
 #ifdef VERBOSE
       printf("idx = %x\n", idx);  
@@ -700,31 +692,26 @@ void process_udp_packet(const u_char *data, int ulen)
         case 0xFFFF:
           {
             printf("Boot requested\n");
-            boot(boot_file_buf, maxidx*CHUNK_SIZE);
-            break;
-          }
-        case 0xFFFE:
-          {
-            oldidx = 0;
-            maxidx = 0;
-            digest = 0;
-            printf("Clear blocks requested\n");
-            memset(maskarray, 0, sizeof_maskarray);
-            raw_udp_main(maskarray, sizeof_maskarray);
-            break;
-          }
-        case 0xFFFD:
-          {
-            printf("Report blocks requested\n");
-            raw_udp_main(maskarray, sizeof_maskarray);
+            boot(boot_file_buf);
             break;
           }
         case 0xFFFC:
           {
-            printf("Report md5 requested\n");
-            if (!digest)
-              digest = hash_buf(boot_file_buf, maxidx*CHUNK_SIZE);
-            raw_udp_main(digest, hash_length * 2 + 1);
+            uint16_t start, end;
+            memcpy(&start, data, sizeof(uint16_t));
+            memcpy(&end, data+sizeof(uint16_t), sizeof(uint16_t));
+            if (ostart!=start || oend!=end || !*odigest)
+              {
+                uint8_t *digest;
+                printf("Report md5(%d,%d) requested\n", start, end);
+                digest = hash_buf(boot_file_buf+start*CHUNK_SIZE, (end-start)*CHUNK_SIZE);
+                memcpy(odigest, digest, hash_length * 2 + 1);
+                ostart=start;
+                oend=end;
+              }
+            else
+              printf("Report md5(%d,%d) repeated = %s\n", start, end, odigest);
+            raw_udp_main(odigest, hash_length * 2 + 1);
             break;
           }
         default:
@@ -732,11 +719,14 @@ void process_udp_packet(const u_char *data, int ulen)
             uint8_t *boot_file_ptr = boot_file_buf+idx*CHUNK_SIZE;
             if (boot_file_ptr+CHUNK_SIZE < boot_file_buf_end)
               {
-                digest = NULL;
                 memcpy(boot_file_ptr, data, CHUNK_SIZE);
-                maskarray[idx/64] |= 1ULL << (idx&63);
-                if (maxidx <= idx)
-                  maxidx = idx+1;
+                if (idx >= ostart && idx < oend)
+                  {
+                    printf("Report md5(%d,%d) trashed\n", ostart, oend);
+                    *odigest = 0;
+                    ostart = 0;
+                    oend = 0;
+                  }
               }
             else
               printf("Data Payload index %d out of range\n", idx);
@@ -745,7 +735,6 @@ void process_udp_packet(const u_char *data, int ulen)
 #else
             if (idx % 100 == 0) printf(".");
 #endif
-            oldidx = idx;
           }
         }
     }

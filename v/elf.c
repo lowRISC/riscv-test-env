@@ -67,18 +67,14 @@
 #define IS_ELF64(hdr) (IS_ELF(hdr) && (hdr).e_ident[4] == 2)
 #endif
 
-int load_elf(const uint8_t *elf, const uint32_t elf_size) {
+int load_elf(const uint8_t *elf) {
   // sanity checks
-  if(elf_size <= sizeof(Elf64_Ehdr))
-    return 1;                   /* too small */
 
   const Elf64_Ehdr *eh = (const Elf64_Ehdr *)elf;
   if(!IS_ELF64(*eh))
     return 2;                   /* not a elf64 file */
 
   const Elf64_Phdr *ph = (const Elf64_Phdr *)(elf + eh->e_phoff);
-  if(elf_size < eh->e_phoff + eh->e_phnum*sizeof(*ph))
-    return 3;                   /* internal damaged */
 
   uint32_t i;
   for(i=0; i<eh->e_phnum; i++) {
@@ -89,11 +85,6 @@ int load_elf(const uint8_t *elf, const uint32_t elf_size) {
 	const uint8_t *elf_offset = elf + ph[i].p_offset;
 	size_t len = ph[i].p_filesz;
 	size_t extent = ph[i].p_offset + len;
-        if(elf_size < extent)
-	  {
-	    printf("len required = %lX, actual = %x\n", extent, elf_size);
-	    return 3;             /* internal damaged */
-	  }
 	printf("memcpy(%p,0x%p,0x%lx);\n", paddr, elf_offset, len);
         memcpy(paddr, elf_offset, len);
 #ifdef VERBOSE_MD5

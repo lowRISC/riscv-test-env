@@ -79,6 +79,36 @@ void die(char *s)
 static uint64_t maskarray[MAX_FILE_SIZE/CHUNK_SIZE/64];
 struct sockaddr_in si_other;
 char message[BUFLEN], digest[MD5_DIGEST_LENGTH*2+1];
+static int chunks, sockfd, s;
+static char *m;
+enum {gran=32};
+
+static void md5_bin2hex(char *p, const char *cp)
+{
+  static const char *hex = "0123456789abcdef";
+  int count = 16;
+  while (count) {
+  unsigned char c = *cp++;
+
+  *p++ = hex[c >> 4];
+  *p++ = hex[c & 0xf];
+  count--;
+ }
+  *p = 0;
+}
+
+char *local_md5(const char *m, int start, int len)
+{
+  unsigned char md[MD5_DIGEST_LENGTH];
+  unsigned char hex[MD5_DIGEST_LENGTH*2+1];
+  uint8_t *md5;
+  assert(start >= 0);
+  assert(len >= 0);
+  assert(len <= chunks);
+  md5 = MD5((unsigned char *)m+start*CHUNK_SIZE, len*CHUNK_SIZE, md);
+  md5_bin2hex(hex, md5);
+  return strdup(hex);
+}
 
 void send_message(int s, uint16_t idx)
 {
@@ -121,12 +151,10 @@ int recv_message(int sockfd, int typ)
 #endif          
           switch (len)
             {
-            case sizeof(maskarray):
-              memcpy(maskarray, payload, len);
-              update = (len==typ);
-              break;
             case MD5_DIGEST_LENGTH*2+1:
               memcpy(digest, payload, len);
+              digest[len] = 0;
+              puts(digest);
               update = (len==typ);
               break;
             default:
@@ -140,25 +168,44 @@ int recv_message(int sockfd, int typ)
   return update;
 }
 
-static void md5_bin2hex(char *p, const char *cp)
+int check_chunks(uint16_t start, uint16_t end)
 {
-  static const char *hex = "0123456789abcdef";
-  int count = 16;
-  while (count) {
-  unsigned char c = *cp++;
+  printf("check_chunks(%d,%d)\n", start, end);
+  do {
+    memcpy(message, &start, sizeof(uint16_t));
+    memcpy(message+sizeof(uint16_t), &end, sizeof(uint16_t));
+    send_message(s, 0xFFFC);
+    usleep(3125*(end-start));
+  }
+  while (!recv_message(sockfd, MD5_DIGEST_LENGTH*2+1));
+  printf("Received digest(%d,%d) = %s", start, end, digest);
+  uint8_t *partialmd5 = local_md5(m, start, end-start);
+  int rslt = strcmp(digest, partialmd5);
+  if (!rslt)
+    {
+      printf(" (OK)");
+    }
+  putchar('\n');
+  return rslt;
+}
 
-  *p++ = hex[c >> 4];
-  *p++ = hex[c & 0xf];
-  count--;
- }
-  *p = 0;
+int send_chunks(int idx, int last)
+{
+  int j;
+  for (j = idx; j < last; j++)
+    {
+      memcpy(message, m+j*CHUNK_SIZE, CHUNK_SIZE);
+      //send the message
+      send_message(s, j);
+    }
+  return 1;
 }
 
 int main(int argc, char *argv[])
 {
   char sender[INET6_ADDRSTRLEN];
-  int sockfd, i, ret = 0;
-  int sockopt, restart = 0;
+  int i, ret = 0;
+  int sockopt;
   int oldpercent = -1;
   struct ifreq ifopts;	/* set promiscuous mode */
   struct ifreq if_ip;	/* get ip addr */
@@ -166,25 +213,9 @@ int main(int argc, char *argv[])
   uint8_t buf[BUF_SIZ];
   char ifName[IFNAMSIZ];
   socklen_t peer_addr_size;
-  int cfd, len, chunks, fd, s, slen, rslt;
+  int cfd, len, fd, slen, rslt;
   int incomplete = 1;
-  int ignore_md5 = 0;
   uint16_t idx;
-  char *m;
-
-  if (!strcmp(argv[1], "-r"))
-    {
-      restart = 1;
-      ++argv;
-      --argc;
-    }
-  
-  if (!strcmp(argv[1], "-m"))
-    {
-      ignore_md5 = 1;
-      ++argv;
-      --argc;
-    }
   
   /* Get interface name */
   if (argc < 3)
@@ -209,11 +240,7 @@ int main(int argc, char *argv[])
   printf("File = %s, len = %d, chunks = %d\n", argv[2], len, chunks);
   assert(chunks < 65536);
   m = (char *)mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, 0);
-  unsigned char md[MD5_DIGEST_LENGTH];
-  unsigned char hex[MD5_DIGEST_LENGTH*2+1];
-  uint8_t *md5 = MD5((unsigned char *)m, chunks*CHUNK_SIZE, md);
-  md5_bin2hex(hex, md5);
-  printf("MD5 sum = %s\n", hex);
+  char *hex = local_md5(m, 0, chunks);
   /* Header structures */
   struct ether_header *eh = (struct ether_header *) buf;
   struct iphdr *iph = (struct iphdr *) (buf + sizeof(struct ether_header));
@@ -241,71 +268,28 @@ int main(int argc, char *argv[])
   read_timeout.tv_sec = 0;
   read_timeout.tv_usec = 100;
   setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof read_timeout);
-
-  /* restart */
-  while (restart)
-    {
-      printf("Restarting\n");
-      do {
-        send_message(s, 0xFFFE);
-        usleep(100000);
-      }
-      while (!recv_message(sockfd, sizeof(maskarray)));
-      restart = 0;
-      for (i = 0; i < sizeof(maskarray)/sizeof(*maskarray); i++)
-        {
-          if (maskarray[i]) restart = 1;
-        }
-    }
   
   while (incomplete)
     {
-      for (idx = 0; idx < chunks; ++idx)
-	{
-	  if (!(maskarray[idx/64] & (1ULL << (idx&63))))
-	    {
-	      memcpy(message, m+idx*CHUNK_SIZE, CHUNK_SIZE);
-	      //send the message
-	      send_message(s, idx);
-	    }
-	}
-      do {
-        send_message(s, 0xFFFD);
-        usleep(1000000);
-      }
-      while (!recv_message(sockfd, sizeof(maskarray)));
       incomplete = 0;
-      for (idx = 0; idx < chunks; ++idx)
+      for (idx = 0; idx < chunks; idx += gran)
 	{
-	  if (!(maskarray[idx/64] & (1ULL << (idx&63))))
-	    {
-	      ++incomplete;
-	    }
-	}
-      printf(" %d%%\n", 100*(chunks-incomplete)/chunks);
-      fflush(stdout);
+          int last = idx+gran;
+          if (last > chunks) last = chunks;
+          if (check_chunks(idx, last))
+            {
+              incomplete = send_chunks(idx, last);
+            }
+        }
     }
-  do {
-    send_message(s, 0xFFFC);
-    usleep(1000000);
-  }
-  while (!recv_message(sockfd, MD5_DIGEST_LENGTH*2+1));
-  printf("Received digest = %s", digest);
-  if (!strcmp(digest, hex))
+  if (!check_chunks(0, chunks))
     {
-    printf(" (OK)\n");
-    send_message(s, 0xFFFF);
+      printf(" (OK)\n");
+      send_message(s, 0xFFFF);
     }
   else
     {
-    if (ignore_md5)
-      {
-        printf(" (BAD - continuing anyway)\n");
-        send_message(s, 0xFFFF);
-      }
-    else
       printf(" (BAD)\n");
-
     }
   close(s);
   close(sockfd);

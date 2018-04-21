@@ -1,3 +1,6 @@
+#define icache 0x700
+#define dcache 0x701
+#define dummy 0x777
         .text
         .globl _start
 _start: nop
@@ -6,7 +9,14 @@ _start: nop
 trap:   csrr ra, mepc
         csrr s0, mcause
         j trap
-0:      csrw mtvec, ra
+0:      la t0, 2f
+        csrw mtvec, t0
+/*
+        csrw icache, zero
+        csrw dcache, zero
+*/        
+        csrw dummy, zero
+2:      csrw mtvec, ra
         li sp, 0x4000FF00
         li a0, 0x41008000
         li t1, 128

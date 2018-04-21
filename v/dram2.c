@@ -15,6 +15,7 @@
 #define __version__ "4.3.0"
 
 #include <limits.h>
+#include <stdio.h>
 #include <stddef.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -644,13 +645,14 @@ int main()
 {
   //  enum {range=16384};
   //  enum {range=262144};
-  //  enum {range=1048576};
+      enum {range=1048576};
   //  enum {range=4194304};
   //  enum {range=8388608};
   //  enum {range=16777216};
   //  enum {range=33554432};
   //  enum {range=67108864};
-  enum {range=134217728};
+
+  // enum {range=134217728};
   void volatile *start;
   printf("\nBare metal DRAM test\n");
   printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
