@@ -89,10 +89,12 @@ int compare_regions(ulv *bufa, ulv *bufb, size_t count) {
 
     for (i = 0; i < count; i++, p1++, p2++) {
         if (*p1 != *p2) {
-                printf( 
+                mini_printf( 
                         "FAILURE: 0x%x != 0x%x at offset 0x%x.\n", 
                         (ul) *p1, (ul) *p2, (ul) (i * sizeof(ul)));
-            /* printf("Skipping to next test..."); */
+                mini_printf("p1 = %p, p2 = %p\n", p1, p2);
+                for(;;) // debug HACK
+                  ;
             r = -1;
         }
     }
@@ -105,34 +107,34 @@ int test_stuck_address(ulv *bufa, size_t count) {
     size_t i;
     off_t physaddr;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < 16; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         p1 = (ulv *) bufa;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         for (i = 0; i < count; i++) {
             *p1 = ((j + i) % 2) == 0 ? (ul) p1 : ~((ul) p1);
             *p1++;
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         p1 = (ulv *) bufa;
         for (i = 0; i < count; i++, p1++) {
             if (*p1 != (((j + i) % 2) == 0 ? (ul) p1 : ~((ul) p1))) {
-                    printf( 
+                    mini_printf( 
                             "FAILURE: possible bad address line at offset "
                             "0x%x.\n", 
                             (ul) (i * sizeof(ul)));
-                printf("Skipping to next test...\n");
+                mini_printf("Skipping to next test...\n");
                 
                 return -1;
             }
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -143,17 +145,17 @@ int test_random_value(ulv *bufa, ulv *bufb, size_t count) {
     ul j = 0;
     size_t i;
 
-    printf(" ");
+    mini_printf(" ");
     
     for (i = 0; i < count; i++) {
         *p1++ = *p2++ = rand_ul();
         if (!(i % PROGRESSOFTEN)) {
-            printf("\b");
-            printf("%c", progress[++j % PROGRESSLEN]);
+            mini_printf("\b");
+            mini_printf("%c", progress[++j % PROGRESSLEN]);
             
         }
     }
-    printf("\b \b");
+    mini_printf("\b \b");
     
     return compare_regions(bufa, bufb, count);
 }
@@ -258,26 +260,26 @@ int test_solidbits_comparison(ulv *bufa, ulv *bufb, size_t count) {
     ul q;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < 64; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         q = (j % 2) == 0 ? UL_ONEBITS : 0;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
         for (i = 0; i < count; i++) {
             *p1++ = *p2++ = (i % 2) == 0 ? q : ~q;
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -289,26 +291,26 @@ int test_checkerboard_comparison(ulv *bufa, ulv *bufb, size_t count) {
     ul q;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < 64; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         q = (j % 2) == 0 ? CHECKERBOARD1 : CHECKERBOARD2;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
         for (i = 0; i < count; i++) {
             *p1++ = *p2++ = (i % 2) == 0 ? q : ~q;
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -319,25 +321,25 @@ int test_blockseq_comparison(ulv *bufa, ulv *bufb, size_t count) {
     unsigned int j;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < 256; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         for (i = 0; i < count; i++) {
             *p1++ = *p2++ = (ul) UL_BYTE(j);
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -348,13 +350,13 @@ int test_walkbits0_comparison(ulv *bufa, ulv *bufb, size_t count) {
     unsigned int j;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < UL_LEN * 2; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         for (i = 0; i < count; i++) {
             if (j < UL_LEN) { /* Walk it up. */
@@ -363,14 +365,14 @@ int test_walkbits0_comparison(ulv *bufa, ulv *bufb, size_t count) {
                 *p1++ = *p2++ = ONE << (UL_LEN * 2 - j - 1);
             }
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -381,13 +383,13 @@ int test_walkbits1_comparison(ulv *bufa, ulv *bufb, size_t count) {
     unsigned int j;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < UL_LEN * 2; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         for (i = 0; i < count; i++) {
             if (j < UL_LEN) { /* Walk it up. */
@@ -396,14 +398,14 @@ int test_walkbits1_comparison(ulv *bufa, ulv *bufb, size_t count) {
                 *p1++ = *p2++ = UL_ONEBITS ^ (ONE << (UL_LEN * 2 - j - 1));
             }
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -414,13 +416,13 @@ int test_bitspread_comparison(ulv *bufa, ulv *bufb, size_t count) {
     unsigned int j;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (j = 0; j < UL_LEN * 2; j++) {
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
         p1 = (ulv *) bufa;
         p2 = (ulv *) bufb;
-        printf("setting %u", j);
+        mini_printf("setting %u", j);
         
         for (i = 0; i < count; i++) {
             if (j < UL_LEN) { /* Walk it up. */
@@ -435,14 +437,14 @@ int test_bitspread_comparison(ulv *bufa, ulv *bufb, size_t count) {
                                     | (ONE << (UL_LEN * 2 + 1 - j)));
             }
         }
-        printf("\b\b\b\b\b\b\b\b\b\b\b");
-        printf("testing %u", j);
+        mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+        mini_printf("testing %u", j);
         
         if (compare_regions(bufa, bufb, count)) {
             return -1;
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -454,29 +456,29 @@ int test_bitflip_comparison(ulv *bufa, ulv *bufb, size_t count) {
     ul q;
     size_t i;
 
-    printf("           ");
+    mini_printf("           ");
     
     for (k = 0; k < UL_LEN; k++) {
         q = ONE << k;
         for (j = 0; j < 8; j++) {
-            printf("\b\b\b\b\b\b\b\b\b\b\b");
+            mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
             q = ~q;
-            printf("setting %u", k * 8 + j);
+            mini_printf("setting %u", k * 8 + j);
             
             p1 = (ulv *) bufa;
             p2 = (ulv *) bufb;
             for (i = 0; i < count; i++) {
                 *p1++ = *p2++ = (i % 2) == 0 ? q : ~q;
             }
-            printf("\b\b\b\b\b\b\b\b\b\b\b");
-            printf("testing %u", k * 8 + j);
+            mini_printf("\b\b\b\b\b\b\b\b\b\b\b");
+            mini_printf("testing %u", k * 8 + j);
             
             if (compare_regions(bufa, bufb, count)) {
                 return -1;
             }
         }
     }
-    printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
+    mini_printf("\b\b\b\b\b\b\b\b\b\b\b           \b\b\b\b\b\b\b\b\b\b\b");
     
     return 0;
 }
@@ -488,7 +490,7 @@ int test_8bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
     unsigned int b, j = 0;
     size_t i;
 
-    printf(" ");
+    mini_printf(" ");
     
     for (attempt = 0; attempt < 2;  attempt++) {
         if (attempt & 1) {
@@ -505,8 +507,8 @@ int test_8bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
                 *p1++ = *t++;
             }
             if (!(i % PROGRESSOFTEN)) {
-                printf("\b");
-                printf("%c", progress[++j % PROGRESSLEN]);
+                mini_printf("\b");
+                mini_printf("%c", progress[++j % PROGRESSLEN]);
                 
             }
         }
@@ -514,7 +516,7 @@ int test_8bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
             return -1;
         }
     }
-    printf("\b \b");
+    mini_printf("\b \b");
     
     return 0;
 }
@@ -526,7 +528,7 @@ int test_16bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
     unsigned int b, j = 0;
     size_t i;
 
-    printf( " " );
+    mini_printf( " " );
     for (attempt = 0; attempt < 2; attempt++) {
         if (attempt & 1) {
             p1 = (u16v *) bufa;
@@ -542,8 +544,8 @@ int test_16bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
                 *p1++ = *t++;
             }
             if (!(i % PROGRESSOFTEN)) {
-                printf("\b");
-                printf("%c", progress[++j % PROGRESSLEN]);
+                mini_printf("\b");
+                mini_printf("%c", progress[++j % PROGRESSLEN]);
                 
             }
         }
@@ -551,7 +553,7 @@ int test_16bit_wide_random(ulv* bufa, ulv* bufb, size_t count) {
             return -1;
         }
     }
-    printf("\b \b");
+    mini_printf("\b \b");
     
     return 0;
 }
@@ -603,7 +605,7 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     size_t maxbytes = -1; /* addressable memory, in bytes */
     size_t maxmb = (maxbytes >> 20) + 1; /* addressable memory, in MB */
     int device_specified = 0;
-    printf("test range is 0x%x to 0x%x\n", aligned, aligned+bufsize-1);
+    mini_printf("test range is 0x%x to 0x%x\n", aligned, aligned+bufsize-1);
     
     halflen = bufsize / 2;
     count = halflen / sizeof(ul);
@@ -611,41 +613,47 @@ int testrange(void volatile *aligned, size_t bufsize, ul loops, int narrow) {
     bufb = (ulv *) ((size_t) aligned + halflen);
 
     for(loop=1; loop <= loops; loop++) {
-        printf("Loop %u", loop);
+        mini_printf("Loop %u", loop);
         if (loops) {
-            printf("/%u", loops);
+            mini_printf("/%u", loops);
         }
-        printf(":\n");
-        printf("  %s: ", "Stuck Address");
+        mini_printf(":\n");
+        mini_printf("  %s: ", "Stuck Address");
         
         if (!test_stuck_address(aligned, bufsize / sizeof(ul))) {
-             printf("ok\n");
+             mini_printf("ok\n");
         } else {
             exit_code |= EXIT_FAIL_ADDRESSLINES;
         }
         for (i=0;;i++) {
           if ((narrow < tests[i].narrow) || !tests[i].name) break;
-          printf("  %s: ", tests[i].name);
+          mini_printf("  %s: ", tests[i].name);
           if (!tests[i].fp(bufa, bufb, count)) {
-            printf("ok\n");
+            mini_printf("ok\n");
           } else {
             exit_code |= EXIT_FAIL_OTHERTEST;
           }
           
         }
-        printf("\n");
+        mini_printf("\n");
         
     }
-    printf("Done.\n");
+    mini_printf("Done.\n");
     
     return(exit_code);
 }
 
 int main()
 {
+  //  enum {range=256};
+  //  enum {range=1024};
+  //  enum {range=4096};
+  //  enum {range=8192};
   //  enum {range=16384};
+  //  enum {range=32768};
+    enum {range=65536};
   //  enum {range=262144};
-      enum {range=1048576};
+  //  enum {range=1048576};
   //  enum {range=4194304};
   //  enum {range=8388608};
   //  enum {range=16777216};
@@ -654,11 +662,11 @@ int main()
 
   // enum {range=134217728};
   void volatile *start;
-  printf("\nBare metal DRAM test\n");
-  printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
-  printf("Copyright (C) 2001-2012 Charles Cazabon.\n");
-  printf("Licensed under the GNU General Public License version 2 (only).\n");
-  printf("\n");
+  mini_printf("\nBare metal DRAM test\n");
+  mini_printf("memtester version " __version__ " (%d-bit)\n", UL_LEN);
+  mini_printf("Copyright (C) 2001-2012 Charles Cazabon.\n");
+  mini_printf("Licensed under the GNU General Public License version 2 (only).\n");
+  mini_printf("\n");
   start = sbrk(range);  
   testrange(start, range, 1, 1);
 }
@@ -667,6 +675,6 @@ void external_interrupt(void)
 {
   int i, claim, handled = 0;
 #ifdef VERBOSE
-  printf("Hello external interrupt! "__TIMESTAMP__"\n");
+  mini_printf("Hello external interrupt! "__TIMESTAMP__"\n");
 #endif  
 }

@@ -1,6 +1,14 @@
 #include <unistd.h>
 #include <string.h>
+#include <fcntl.h>
+#include <sys/wait.h>
 #include <sys/syscall.h>
+#include <sys/resource.h>
+#include <linux/sched.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <sys/wait.h>
 #include "mini-printf.h"
 
 void __attribute__((section(".text.init"))) _start(void)
@@ -50,9 +58,29 @@ void *sbrk(intptr_t siz)
   return oldbase;
 }
 
+int access(const char *pathname, int mode)
+{
+  return syscall(SYS_faccessat, AT_FDCWD, (long)pathname, (long)mode, 0, 0, 0, 0);
+}
+
+ssize_t read(int fd, void *buf, size_t count)
+{
+  return syscall(SYS_read, fd, (long)buf, count, 0, 0, 0, 0);
+}
+
 ssize_t write(int fd, const void *buf, size_t count)
 {
   return syscall(SYS_write, fd, (long)buf, count, 0, 0, 0, 0);
+}
+
+int execve(const char *filename, char *const argv[], char *const envp[])
+{
+  return syscall(SYS_execve, (long)filename, (long)argv, (long)envp, 0, 0, 0, 0);
+}
+
+pid_t wait4(__pid_t pid, int *stat_loc, int options, struct rusage *usage)
+{
+  return syscall(SYS_wait4, pid, (long)stat_loc, options, (long)usage, 0, 0, 0);
 }
 
 int putchar(int ch)
@@ -71,3 +99,15 @@ void _exit(int code)
 {
   for (;;) syscall(SYS_exit, code, 0, 0, 0, 0, 0, 0);
 }
+
+__pid_t fork()
+{
+  int ret;
+  register long __sp asm("sp");
+  ret = syscall(SYS_clone, 0, __sp, 0, 0, 0, 0, 0);
+  if (ret < 0)
+    {
+      mini_printf("fork returned %d\n", ret);
+    }
+}
+

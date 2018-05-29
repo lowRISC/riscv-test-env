@@ -2,7 +2,7 @@ module cnvmem;
 
    integer i, fd, first, last;
 
-   parameter maxlen = 32'h00500000;
+   parameter maxlen = 32'h00900000;
    
    reg [7:0] mem[32'h00000000:maxlen];
    reg [127:0] mem2[0:maxlen];

@@ -16,7 +16,7 @@ ssize_t write(int fd, const void *buf, size_t count)
 {
   char *ptr = (char *)buf;
   while (count--)
-    hid_console_putchar(*ptr++);
+    myputchar(*ptr++);
 }
 
 void _exit(int code)

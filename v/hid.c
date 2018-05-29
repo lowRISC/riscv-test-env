@@ -1,13 +1,17 @@
 // See LICENSE for license details.
 
+#include <string.h>
 #include "hid.h"
+#include "encoding.h"
 #include "mini-printf.h"
+#define snprintf mini_snprintf
 
 //enum {scroll_start=4096-256};
 enum {scroll_start=0};
-volatile uint32_t *const sd_base = (uint32_t *)0x41010000;
-volatile uint8_t *const hid_vga_ptr = (uint8_t *)0x41008000;
+volatile uint64_t *const sd_base = (uint64_t *)0x41010000;
+volatile uint64_t *const uart_base = (uint64_t *)0x41004000;
 const size_t err = 0x3000, eth = 0x41020000, ddr = 0x80000000, rom = 0x10000, bram = 0x40000000, intc = 0xc000000, clin = 0, hid = 0x41000000;
+volatile uint8_t *const hid_vga_ptr = (uint8_t *)0x41008000;
 static int addr_int = scroll_start;
 
 void hid_console_putchar(unsigned char ch)
@@ -36,17 +40,29 @@ void hid_console_putchar(unsigned char ch)
     }
 }
 
-int putchar(int ch)
+void uart_console_putchar(unsigned char ch)
 {
+  static int first = 0;
+  if (!first)
+    uart_base[0x400] = 54; // was 217;
+  first = 1;
+  while (uart_base[0] & 0x400)
+    ;
+  uart_base[0] = ch;
+}  
+
+int myputchar(int ch)
+{
+  uart_console_putchar(ch);
   hid_console_putchar(ch);
   return ch;
 }
 
 void hid_init(void)
 {
+#if 0  
   if (addr_int != scroll_start)
     addr_int = scroll_start;
-#if 0  
   size_t unknown = 0;
   char *unknownstr, *config = (char *)0x10000;
   for (int i = 128; i < 4096; i++)
@@ -139,6 +155,8 @@ int puts(const char *s)
   hid_console_putchar('\n');
 }
 
+// #define VERBOSE_INTERRUPT
+
 void handle_interrupt(long cause)
 {
   int mip;
@@ -153,9 +171,9 @@ void handle_interrupt(long cause)
     case IRQ_S_TIMER  : strcpy(code, "IRQ_S_TIMER  "); break;
     case IRQ_H_TIMER  : strcpy(code, "IRQ_H_TIMER  "); break;
     case IRQ_M_TIMER  : strcpy(code, "IRQ_M_TIMER  "); break;
-    case IRQ_S_DEV    : strcpy(code, "IRQ_S_DEV    "); break;
-    case IRQ_H_DEV    : strcpy(code, "IRQ_H_DEV    "); break;
-    case IRQ_M_DEV    : strcpy(code, "IRQ_M_DEV    "); break;
+    case IRQ_S_EXT    : strcpy(code, "IRQ_S_EXT    "); break;
+    case IRQ_H_EXT    : strcpy(code, "IRQ_H_EXT    "); break;
+    case IRQ_M_EXT    : strcpy(code, "IRQ_M_EXT    "); break;
     case IRQ_COP      : strcpy(code, "IRQ_COP      "); break;
     case IRQ_HOST     : strcpy(code, "IRQ_HOST     "); break;
     default           : snprintf(code, sizeof(code), "IRQ_%x     ", cause);
@@ -165,8 +183,39 @@ void handle_interrupt(long cause)
  snprintf(code, sizeof(code), "mip=%x\n", mip);
  hid_send_string(code);
 #endif
-#if 0 
- if (cause==IRQ_M_DEV)
+ if (cause==IRQ_M_EXT)
    external_interrupt();
-#endif 
 }
+
+static char trap_rpt_buf [256];
+
+long handle_trap(long cause, long epc, long regs[32])
+{
+  int* csr_insn;
+  asm ("jal %0, 1f; csrr a0, 0xcc0; 1:" : "=r"(csr_insn));
+  long sys_ret = 0;
+
+  if (cause == CAUSE_ILLEGAL_INSTRUCTION &&
+      (*(int*)epc & *csr_insn) == *csr_insn)
+    ;                           /* why single this out? csrr/csrrs stats is OK */
+  else {
+    // do some report
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "mcause=%0x\n", cause);
+    hid_send_string(trap_rpt_buf);
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "mepc=%0x\n", epc);
+    hid_send_string(trap_rpt_buf);
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "mbadaddr=%0x\n", read_csr(mbadaddr));
+    hid_send_string(trap_rpt_buf);
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "einsn=%0x\n", *(int*)epc);
+    hid_send_string(trap_rpt_buf);
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "sp=%0x\n", regs[2]);
+    hid_send_string(trap_rpt_buf);
+    snprintf(trap_rpt_buf, sizeof(trap_rpt_buf), "tp=%0x\n", regs[4]);
+    hid_send_string(trap_rpt_buf);
+    while(1);
+  }
+
+  regs[10] = sys_ret;
+  return epc+4;
+}
+
