@@ -6,12 +6,12 @@ O =  vm.c hid.c memset.S # mini-printf.c
 D = syscalls.c dram.c mini-printf.c random.c bare_metal_include/strlen.c
 F = syscalls.c fork.c mini-printf.c random.c bare_metal_include/strlen.c bare_metal_include/string/strchr.c bare_metal_include/string/strcmp.c
 B = bare.c dram.c mini-printf.c random.c hid.c
-B2 = bare2.c dram2.c mini-printf.c random.c hid.c
-E = eth.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c bare_metal_include/strcpy.c
+B2 = bare2.c dram2.c mini-printf.c random.c hid.c common.c
+E = eth.c dhcp-client.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c common.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c bare_metal_include/strcpy.c
 I = int.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c bare_metal_include/strcpy.c
 U = bare.c uart1.c mini-printf.c hid.c
 Z = # mydummy.c hid.c mini-printf.c
-CFLAGS = -march=rv64g -nostdlib -I..
+CFLAGS = -march=rv64g -nostdlib -I.. -save-temps
 all: vm addone bare dram check dummy hello goodbye
 
 vm: entry.S $O link.ld dram ./cnvmem
@@ -89,7 +89,7 @@ uart: $U
 	mv cnvmem64.hex $@.hex
 	rm cnvmem.coe cnvmem.hex
 
-eth: $E ../../dummy-riscv64/spike.dtb
+eth: $E lowrisc.dtb
 	$(RISCV)/bin/riscv64-unknown-elf-gcc $(CFLAGS) -I.. -Ibare_metal_include -T $@.ld ethcrt.S -static -g -Os $(E) -o $@ -lgcc
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -D -z -S -l $@ > $@.dis
 	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
@@ -131,11 +131,11 @@ uarttest: uart
 
 ethertest: eth ./recvRawEth boot.bin
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
-	./recvRawEth eth0 boot.bin
+	time ./recvRawEth -s 192.168.0.51 boot.bin
 
 etherdummy: eth ./recvRawEth
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
-	./recvRawEth eth0 dummy.bin
+	./recvRawEth -s 192.168.0.51 dummy.bin
 
 uboot: eth ./recvRawEth uboot.bin
 	../../jtag_digilent_ariane/jtag_digilent_ariane -r$<
@@ -149,8 +149,8 @@ cnvmem: cnvmem.v
 
 recvRawEth: recvRawEth.c
 	gcc $< -o $@ -g -lssl -lcrypto
-	@echo This version of etherboot/ethersd requires super user powers ...
-	sudo setcap cap_net_raw+ep $@
+#	@echo This version of etherboot/ethersd requires super user powers ...
+#	sudo setcap cap_net_raw+ep $@
 
 boot.bin: ../../riscv-pk/build/bbl ./cnvmem
 	env PATH=/local/scratch/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/build

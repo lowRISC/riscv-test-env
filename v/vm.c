@@ -7,6 +7,7 @@
 #include "riscv_test.h"
 #include "mini-printf.h"
 #include "hid.h"
+#include "lowrisc_memory_map.h"
 
 extern char userstart[];
 extern char userstop[];
@@ -40,7 +41,7 @@ static void cputstring(const char* s)
 
 static void terminate(int code)
 {
-  uint32_t *leds = (uint32_t *) 0x4101003C;
+  uint32_t *leds = (uint32_t *) (sd_base_addr+0x3C);
   *leds = code;
   while (1)
     asm("ebreak");

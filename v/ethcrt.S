@@ -140,11 +140,11 @@ trap_entry:
         addi a0,a0,32
         addi t1,t1,-1
         bnez t1,1b
-        jal ra, main
+        jal ra, _init
 exit:   j exit
         .data
         .align 14
-        .incbin "../../dummy-riscv64/spike.dtb"
+        .incbin "lowrisc.dtb"
         .align 4
 3:      .asciz "Hello, Ariane!                                "
         .data

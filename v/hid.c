@@ -2,16 +2,13 @@
 
 #include <string.h>
 #include "hid.h"
+#include "lowrisc_memory_map.h"
 #include "encoding.h"
 #include "mini-printf.h"
 #define snprintf mini_snprintf
 
 //enum {scroll_start=4096-256};
 enum {scroll_start=0};
-volatile uint64_t *const sd_base = (uint64_t *)0x41010000;
-volatile uint64_t *const uart_base = (uint64_t *)0x41004000;
-const size_t err = 0x3000, eth = 0x41020000, ddr = 0x80000000, rom = 0x10000, bram = 0x40000000, intc = 0xc000000, clin = 0, hid = 0x41000000;
-volatile uint8_t *const hid_vga_ptr = (uint8_t *)0x41008000;
 static int addr_int = scroll_start;
 
 void hid_console_putchar(unsigned char ch)
@@ -19,14 +16,14 @@ void hid_console_putchar(unsigned char ch)
   int lmt;
   switch(ch)
     {
-    case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = ' '; break;
+    case 8: case 127: if (addr_int & 127) hid_vga_ptr[--addr_int] = 0xF00|' '; break;
     case 13: addr_int = addr_int & -128; break;
     case 10:
       {
-        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = ' ';
+        int lmt = (addr_int|127)+1; while (addr_int < lmt) hid_vga_ptr[(addr_int++)] = 0xF00|' ';
         break;
       }
-    default: hid_vga_ptr[addr_int++] = ch;
+    default: hid_vga_ptr[addr_int++] = 0xF00|ch;
     }
   if (addr_int >= 4096-128)
     {
@@ -35,7 +32,7 @@ void hid_console_putchar(unsigned char ch)
         if (addr_int < 4096-128)
           hid_vga_ptr[addr_int] = hid_vga_ptr[addr_int+128];
         else
-          hid_vga_ptr[addr_int] = ' ';
+          hid_vga_ptr[addr_int] = 0xF00|' ';
       addr_int = 4096-256;
     }
 }
@@ -51,7 +48,7 @@ void uart_console_putchar(unsigned char ch)
   uart_base[0] = ch;
 }  
 
-int myputchar(int ch)
+int putchar(int ch)
 {
   uart_console_putchar(ch);
   hid_console_putchar(ch);
@@ -153,6 +150,13 @@ int puts(const char *s)
 {
   hid_send_string(s);
   hid_console_putchar('\n');
+}
+
+ssize_t sys_write(int fd, const void *buf, size_t count)
+{
+  char *ptr = (char *)buf;
+  while (count--)
+    hid_console_putchar(*ptr++);
 }
 
 // #define VERBOSE_INTERRUPT
