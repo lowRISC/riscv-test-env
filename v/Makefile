@@ -6,7 +6,7 @@ O =  vm.c hid.c memset.S # mini-printf.c
 D = syscalls.c dram.c mini-printf.c random.c bare_metal_include/strlen.c
 F = syscalls.c fork.c mini-printf.c random.c bare_metal_include/strlen.c bare_metal_include/string/strchr.c bare_metal_include/string/strcmp.c
 B = bare.c dram.c mini-printf.c random.c hid.c
-B2 = bare2.c dram2.c mini-printf.c random.c hid.c common.c
+B2 = bare2.c dram2.c mini-printf.c random.c hid.c common.c memset.S
 E = eth.c dhcp-client.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c common.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c bare_metal_include/strcpy.c
 I = int.c mini-printf.c random.c hid.c sdhci-minion-hash-md5.c elf.c bare_metal_include/memcmp.c bare_metal_include/memcpy.c bare_metal_include/memset.c bare_metal_include/wordcopy.c bare_metal_include/strlen.c bare_metal_include/strcpy.c
 U = bare.c uart1.c mini-printf.c hid.c
@@ -95,7 +95,6 @@ eth: $E lowrisc.dtb
 	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
 	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I binary -O verilog $@.bin cnvmem.mem
 	$(RISCV)/bin/riscv64-unknown-elf-size $@
-	../../romgen/bigromtest cnvmem.mem $@.v
 	./cnvmem
 	mv cnvmem64.hex $@.hex
 	rm cnvmem.coe cnvmem.hex
@@ -106,7 +105,6 @@ int: $I
 	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I elf64-little -O binary $@ $@.bin
 	$(RISCV)/bin/riscv64-unknown-elf-objcopy -I binary -O verilog $@.bin cnvmem.mem
 	$(RISCV)/bin/riscv64-unknown-elf-size $@
-	../../romgen/bigromtest cnvmem.mem $@.v
 	./cnvmem
 	mv cnvmem64.hex $@.hex
 	rm cnvmem.coe cnvmem.hex
@@ -153,7 +151,7 @@ recvRawEth: recvRawEth.c
 #	sudo setcap cap_net_raw+ep $@
 
 boot.bin: ../../riscv-pk/build/bbl ./cnvmem
-	env PATH=/local/scratch/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/build
+	env PATH=/local/scratch-legacy/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/build
 	cp -p ../../riscv-pk/build/bbl boot.bin
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -S -l boot.bin > $@.dis
 	$(RISCV)/bin/riscv64-unknown-elf-strip boot.bin
@@ -165,10 +163,10 @@ uboot.bin: ../../u-boot-riscv/u-boot ./cnvmem
 
 .PHONY: ../../u-boot-riscv/u-boot
 ../../u-boot-riscv/u-boot:
-	env PATH=/local/scratch/jrrk2/riscv_install/bin:$(PATH) make -C ../../u-boot-riscv -j 4
+	env PATH=/local/scratch-legacy/jrrk2/riscv_install/bin:$(PATH) make -C ../../u-boot-riscv -j 4
 
 dummy.bin: ../../riscv-pk/dummy/bbl ./cnvmem
-	env PATH=/local/scratch/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/dummy
+	env PATH=/local/scratch-legacy/jrrk2/riscv_install/bin:$(PATH) make -C ../../riscv-pk/dummy
 	cp -p ../../riscv-pk/dummy/bbl dummy.bin
 	$(RISCV)/bin/riscv64-unknown-elf-objdump -d -S -l dummy.bin > $@.dis
 	$(RISCV)/bin/riscv64-unknown-elf-strip dummy.bin

@@ -55,6 +55,13 @@ int putchar(int ch)
   return ch;
 }
 
+int myputchar(int ch)
+{
+  uart_console_putchar(ch);
+  hid_console_putchar(ch);
+  return ch;
+}
+
 void hid_init(void)
 {
 #if 0  
@@ -152,7 +159,7 @@ int puts(const char *s)
   hid_console_putchar('\n');
 }
 
-ssize_t sys_write(int fd, const void *buf, size_t count)
+ssize_t sys_write_(int fd, const void *buf, size_t count)
 {
   char *ptr = (char *)buf;
   while (count--)

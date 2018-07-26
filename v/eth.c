@@ -41,6 +41,13 @@ typedef struct outqueue_t {
 
 outqueue_t *txbuf;
 
+ssize_t write(int fd, const void *buf, size_t count)
+{
+  char *ptr = (char *)buf;
+  while (count--)
+    myputchar(*ptr++);
+}
+
 //#define VERBOSE
 //#define UDP_DEBUG
 
